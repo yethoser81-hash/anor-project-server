@@ -14,21 +14,20 @@ const PORT = process.env.PORT || 3000;
 const upload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        fileSize: 5 * 1024 * 1024 // Limite la taille de chaque fichier à 5 Mo maximum
+        fileSize: 5 * 1024 * 1024 // Limite chaque fichier à 5 Mo
     }
 });
 
-// Configuration des Middlewares globaux
+// Middlewares globaux
 app.use(cors()); 
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true })); 
 
-// Servir le dossier public situé un niveau au-dessus
+// Dossier public
 app.use(express.static(path.join(__dirname, '../public')));
 
 /**
- * ROUTE 1 : Forge et Enregistrement d'un nouveau sceau
- * POST /api/sceau/enregistrer
+ * ROUTE : Forge et Enregistrement
  */
 app.post('/api/sceau/enregistrer', upload.fields([
     { name: 'visuel_packaging', maxCount: 1 },
@@ -47,39 +46,35 @@ app.post('/api/sceau/enregistrer', upload.fields([
             });
         }
 
-        // CORRECTION SÉCURITÉ : Si la signature reçue est un JWS Compact complexe,
-        // on l'isole ou on extrait sa valeur lisible pour éviter d'insérer un jeton brut qui fait échouer Supabase.
-        let signatureNettoiee = signature;
+        // --- CORRECTION SÉCURITÉ : Signature ---
+        // On tronque et on nettoie pour garantir une insertion sans erreur de type
+        let signatureNettoiee = String(signature).substring(0, 100); 
         if (signature.includes('.')) {
-            // C'est un format JWS (Header.Payload.Signature). On extrait la partie signature visuelle ou un alias propre.
             const segments = signature.split('.');
-            signatureNettoiee = `JWS_SIGNED_PART_${segments[2].substring(0, 10)}`;
+            // On prend un segment court (max 20) pour éviter tout débordement
+            signatureNettoiee = `SIG_${segments[2].substring(0, 20)}`;
         }
 
-        // 1. Désérialisation sécurisée des métadonnées JSON
+        // Désérialisation des métadonnées
         let parsedMetadata = {};
         if (metadata_raw) {
             try {
                 parsedMetadata = typeof metadata_raw === 'string' ? JSON.parse(metadata_raw) : metadata_raw;
             } catch (e) {
-                console.warn("Format de metadata_raw invalide, enregistré comme objet vide.");
+                console.warn("Format de metadata_raw invalide, ignoré.");
             }
         }
 
-        // 2. Génération automatique de l'ID à 8 caractères s'il n'est pas fourni
+        // Génération ID et Matrice
         const finalIdSceau = id_sceau || Math.random().toString(36).substring(2, 10).toUpperCase();
-
-        // 3. Génération automatique de la matrice géométrique binaire de 64 caractères
         const matriceBinaire = genererMatriceSecurite();
-
-        // 4. Fabrication du fichier SVG physique contenant la stéganographie
         const svgSceauContenu = forgerSceauSVG(finalIdSceau, matriceBinaire);
 
-        // 5. Enregistrement global dans Supabase
+        // Appel DB
         const resultat = await enregistrerSceau(
             finalIdSceau, 
             id_produit, 
-            signatureNettoiee, // Utilisation de la signature nettoyée et tolérée par le schéma
+            signatureNettoiee, 
             matriceBinaire, 
             parsedMetadata, 
             fichierImage,
@@ -89,79 +84,42 @@ app.post('/api/sceau/enregistrer', upload.fields([
         if (resultat.success) {
             return res.status(201).json({ 
                 success: true, 
-                message: "Sceau certifié, packaging et certificat sauvegardés et ancrés avec succès.",
-                donnees: {
-                    id_sceau: finalIdSceau,
-                    matrice_binaire: matriceBinaire,
-                    svg: svgSceauContenu
-                }
+                message: "Sceau certifié avec succès.",
+                donnees: { id_sceau: finalIdSceau, matrice_binaire: matriceBinaire, svg: svgSceauContenu }
             });
         } else {
-            if (resultat.error && resultat.error.code === '23505') {
-                return res.status(409).json({ success: false, message: "Un sceau avec cet identifiant existe déjà." });
-            }
-            return res.status(500).json({ success: false, error: resultat.error });
+            return res.status(500).json({ success: false, error: resultat.error || "Erreur base de données" });
         }
     } catch (err) {
         console.error("Erreur Forge :", err.message);
-        return res.status(500).json({ success: false, message: "Erreur interne lors de la forge du sceau." });
+        return res.status(500).json({ success: false, message: "Erreur interne lors de la forge." });
     }
 });
 
 /**
- * ROUTE 2 : Vérification du Sceau sur le Terrain (Utilisée par l'APK)
- * POST /api/sceau/verifier
+ * ROUTE : Vérification
  */
 app.post('/api/sceau/verifier', limiterRequetes, validerPayloadScan, async (req, res) => {
     const { id_sceau, matrice_scanne } = req.body;
-
     const resultat = await obtenirSceau(id_sceau);
 
-    if (!resultat.success) {
-        return res.status(500).json({ authentique: false, message: "Erreur technique temporaire lors de la vérification." });
-    }
-
-    if (!resultat.existe) {
-        return res.status(404).json({
-            authentique: false,
-            statut_code: "INTROUVABLE",
-            message: "ATTENTION : Ce sceau n'existe pas dans le registre officiel. Produit falsifié !"
-        });
-    }
+    if (!resultat.success) return res.status(500).json({ authentique: false, message: "Erreur technique." });
+    if (!resultat.existe) return res.status(404).json({ authentique: false, message: "Sceau introuvable." });
 
     const { id_produit, signature, matrice_binaire, statut, metadata_raw, url_packaging, url_certificat } = resultat.donnees;
 
-    if (statut !== 'valide') {
-        return res.status(403).json({
-            authentique: false,
-            statut_code: statut.toUpperCase(),
-            message: `ALERTE : Ce sceau a été marqué comme [${statut}]. Ne pas consommer.`
-        });
-    }
+    if (statut !== 'valide') return res.status(403).json({ authentique: false, message: `Sceau status: ${statut}` });
 
     if (matrice_binaire === matrice_scanne) {
         return res.json({
             authentique: true,
-            statut_code: "VALIDE",
-            message: "Authenticité confirmée. Produit certifié conforme.",
-            details: { 
-                id_produit,
-                signature,
-                url_packaging,
-                url_certificat, 
-                info_conformite: metadata_raw || {}
-            }
+            details: { id_produit, signature, url_packaging, url_certificat, info_conformite: metadata_raw }
         });
     } else {
-        return res.status(401).json({
-            authentique: false,
-            statut_code: "CORROMPU",
-            message: "ALERTE : La signature visuelle ne correspond pas. Tentative de duplication détectée !"
-        });
+        return res.status(401).json({ authentique: false, message: "Tentative de duplication détectée !" });
     }
 });
 
-// Démarrage du serveur
 app.listen(PORT, () => {
-    console.log(`[ANOR-CHECK] Serveur en ligne et actif sur le port ${PORT}`);
+    console.log(`[ANOR-CHECK] Serveur actif sur le port ${PORT}`);
 });

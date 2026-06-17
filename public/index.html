@@ -114,7 +114,6 @@ document.getElementById('certificationForm').addEventListener('submit', async (e
     try {
         const id_produit = document.getElementById("prodID").value.trim();
         const companyName = document.getElementById("companyName").value.trim();
-        const description = document.getElementById("description").value.trim();
         
         const packFile = document.getElementById("packFile").files[0];
         const certFile = document.getElementById("certFile").files[0];
@@ -138,11 +137,10 @@ document.getElementById('certificationForm').addEventListener('submit', async (e
         const formData = new FormData();
         formData.append("id_produit", id_produit);
         
-        // CORRECTION DIRECTE : On envoie une chaîne de signature textuelle simple et propre,
-        // libérée de tout token cryptographique généré localement qui perturbait l'API.
-        formData.append("signature", `${companyName} - SECURE_SIGNATURE`);
+        // --- SÉCURITÉ AJOUTÉE : Protection contre le dépassement de taille ---
+        const sig = `${companyName} - SECURE_SIGNATURE`.substring(0, 250); 
+        formData.append("signature", sig);
         formData.append("metadata_raw", JSON.stringify(metadata_raw));
-        
         formData.append("visuel_packaging", packFile);
         formData.append("certificat_file", certFile);
 
@@ -152,27 +150,26 @@ document.getElementById('certificationForm').addEventListener('submit', async (e
             body: formData
         });
 
-        // Lecture sécurisée du JSON de réponse
+        // Lecture sécurisée du JSON
+        const responseText = await response.text();
         let data;
         try {
-            data = await response.json();
+            data = JSON.parse(responseText);
         } catch (jsonErr) {
-            throw new Error("Le serveur a renvoyé une réponse invalide (Erreur 500 ou crash).");
+            throw new Error("Erreur serveur : format de réponse invalide.");
         }
 
         if (!response.ok || !data.success) {
-            // Gestion des messages d'erreur structurés
-            const msgErreur = data.message || (data.error ? JSON.stringify(data.error) : "Erreur inconnue du serveur.");
+            const msgErreur = data.message || "Erreur inconnue du serveur.";
             throw new Error(msgErreur);
         }
 
         const sealID = data.donnees.id_sceau;
         const matrixBinaire = data.donnees.matrice_binaire;
 
-        // Rendu visuel immédiat sur le Canvas
         await buildPremiumSeal(matrixBinaire, sealID);
         
-        alert(`Succès : Sceau ANOR officiellement forgé et ancré.\nSealID : ${sealID}`);
+        alert(`Succès : Sceau ANOR officiellement forgé.\nSealID : ${sealID}`);
         btn.innerText = "✅ SCEAU FORGÉ";
         
     } catch (e) { 
@@ -182,7 +179,7 @@ document.getElementById('certificationForm').addEventListener('submit', async (e
     }
 });
 
-// --- MOTEUR DE RENDU DU SCEAU GRAPHIQUE ---
+// --- MOTEUR DE RENDU DU SCEAU GRAPHIQUE (INCHANGÉ) ---
 async function buildPremiumSeal(matrixStructure, sealID) {
     const canvas = document.getElementById('generated-seal');
     const ctx = canvas.getContext('2d');
