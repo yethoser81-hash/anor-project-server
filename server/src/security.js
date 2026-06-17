@@ -9,7 +9,8 @@ const ipCache = {};
 setInterval(() => {
     const maintenant = Date.now();
     for (const ip in ipCache) {
-        if (maintenant - ipCache[ip].resetTime > 600000) {
+        // CORRECTION : Nettoyage sécurisé basé sur le temps de réinitialisation effectif
+        if (maintenant > ipCache[ip].resetTime) {
             delete ipCache[ip];
         }
     }

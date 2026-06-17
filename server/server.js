@@ -1,10 +1,9 @@
 const express = require('express');
 const cors = require('cors');
-const multer = require('multer'); // Importation de multer pour gérer le téléversement de fichiers
-const path = require('path'); // REQUIS : Pour gérer correctement les chemins de dossiers
+const multer = require('multer'); 
+const path = require('path'); 
 require('dotenv').config();
 
-// Importation de nos propres modules de données et de sécurité
 const { enregistrerSceau, obtenirSceau } = require('./src/database.js');
 const { limiterRequetes, validerPayloadScan, genererMatriceSecurite, forgerSceauSVG } = require('./src/security.js');
 
@@ -20,39 +19,44 @@ const upload = multer({
 });
 
 // Configuration des Middlewares globaux
-app.use(cors()); // Autorise l'application mobile à requêter l'API à distance
-app.use(express.json()); // Permet au serveur de comprendre les données au format JSON
-app.use(express.urlencoded({ extended: true })); // Permet de comprendre les formulaires complexes (multipart)
+app.use(cors()); 
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true })); 
 
-// CORRECTION : Indique à Express où trouver le dossier public par rapport au sous-dossier server
+// Servir le dossier public situé un niveau au-dessus
 app.use(express.static(path.join(__dirname, '../public')));
 
 /**
- * ROUTE 1 : Forge et Enregistrement d'un nouveau sceau avec métadonnées, image du packaging ET certificat PDF
+ * ROUTE 1 : Forge et Enregistrement d'un nouveau sceau
  * POST /api/sceau/enregistrer
- * Le middleware upload.fields intercepte les deux fichiers chargés simultanément dans la forge
  */
 app.post('/api/sceau/enregistrer', upload.fields([
     { name: 'visuel_packaging', maxCount: 1 },
     { name: 'certificat_file', maxCount: 1 }
 ]), async (req, res) => {
     try {
-        // Avec un envoi de type FormData, les textes arrivent dans req.body
         const { id_sceau, id_produit, signature, metadata_raw } = req.body;
         
-        // Extraction des fichiers interceptés par Multer
         const fichierImage = req.files && req.files['visuel_packaging'] ? req.files['visuel_packaging'][0] : null;
         const fichierPdf = req.files && req.files['certificat_file'] ? req.files['certificat_file'][0] : null;
 
-        // Validation rapide de la présence des champs essentiels pour la création
         if (!id_produit || !signature) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Données incomplètes. 'id_produit' et 'signature' (nom/type) sont requis." 
+                message: "Données incomplètes. 'id_produit' et 'signature' sont requis." 
             });
         }
 
-        // 1. Désérialisation sécurisée des métadonnées JSON reçues du formulaire
+        // CORRECTION SÉCURITÉ : Si la signature reçue est un JWS Compact complexe,
+        // on l'isole ou on extrait sa valeur lisible pour éviter d'insérer un jeton brut qui fait échouer Supabase.
+        let signatureNettoiee = signature;
+        if (signature.includes('.')) {
+            // C'est un format JWS (Header.Payload.Signature). On extrait la partie signature visuelle ou un alias propre.
+            const segments = signature.split('.');
+            signatureNettoiee = `JWS_SIGNED_PART_${segments[2].substring(0, 10)}`;
+        }
+
+        // 1. Désérialisation sécurisée des métadonnées JSON
         let parsedMetadata = {};
         if (metadata_raw) {
             try {
@@ -65,21 +69,21 @@ app.post('/api/sceau/enregistrer', upload.fields([
         // 2. Génération automatique de l'ID à 8 caractères s'il n'est pas fourni
         const finalIdSceau = id_sceau || Math.random().toString(36).substring(2, 10).toUpperCase();
 
-        // 3. Génération automatique de la matrice géométrique binaire de 64 caractères (0 et 1)
+        // 3. Génération automatique de la matrice géométrique binaire de 64 caractères
         const matriceBinaire = genererMatriceSecurite();
 
         // 4. Fabrication du fichier SVG physique contenant la stéganographie
         const svgSceauContenu = forgerSceauSVG(finalIdSceau, matriceBinaire);
 
-        // 5. Enregistrement global dans Supabase (Texte + JSON + Image + PDF)
+        // 5. Enregistrement global dans Supabase
         const resultat = await enregistrerSceau(
             finalIdSceau, 
             id_produit, 
-            signature, 
+            signatureNettoiee, // Utilisation de la signature nettoyée et tolérée par le schéma
             matriceBinaire, 
             parsedMetadata, 
             fichierImage,
-            fichierPdf // Transmis à ta fonction database.js mise à jour précédemment
+            fichierPdf 
         );
 
         if (resultat.success) {
@@ -93,7 +97,6 @@ app.post('/api/sceau/enregistrer', upload.fields([
                 }
             });
         } else {
-            // Gestion des collisions d'identifiants uniques
             if (resultat.error && resultat.error.code === '23505') {
                 return res.status(409).json({ success: false, message: "Un sceau avec cet identifiant existe déjà." });
             }
@@ -112,14 +115,12 @@ app.post('/api/sceau/enregistrer', upload.fields([
 app.post('/api/sceau/verifier', limiterRequetes, validerPayloadScan, async (req, res) => {
     const { id_sceau, matrice_scanne } = req.body;
 
-    // 1. Interroger le registre Supabase
     const resultat = await obtenirSceau(id_sceau);
 
     if (!resultat.success) {
         return res.status(500).json({ authentique: false, message: "Erreur technique temporaire lors de la vérification." });
     }
 
-    // 2. Si le sceau n'existe pas du tout dans notre base
     if (!resultat.existe) {
         return res.status(404).json({
             authentique: false,
@@ -128,10 +129,8 @@ app.post('/api/sceau/verifier', limiterRequetes, validerPayloadScan, async (req,
         });
     }
 
-    // Extraction de l'ensemble des informations d'authentification et de contrôle
     const { id_produit, signature, matrice_binaire, statut, metadata_raw, url_packaging, url_certificat } = resultat.donnees;
 
-    // 3. Vérification de la validité administrative
     if (statut !== 'valide') {
         return res.status(403).json({
             authentique: false,
@@ -140,7 +139,6 @@ app.post('/api/sceau/verifier', limiterRequetes, validerPayloadScan, async (req,
         });
     }
 
-    // 4. Cœur de la vérification physique
     if (matrice_binaire === matrice_scanne) {
         return res.json({
             authentique: true,
@@ -150,7 +148,7 @@ app.post('/api/sceau/verifier', limiterRequetes, validerPayloadScan, async (req,
                 id_produit,
                 signature,
                 url_packaging,
-                url_certificat, // Transmet également le PDF à l'APK si nécessaire
+                url_certificat, 
                 info_conformite: metadata_raw || {}
             }
         });
