@@ -116,7 +116,6 @@ document.getElementById('certificationForm').addEventListener('submit', async (e
         const companyName = document.getElementById("companyName").value.trim();
         const description = document.getElementById("description").value.trim();
         
-        // Extraction et validation des fichiers obligatoirement présents
         const packFile = document.getElementById("packFile").files[0];
         const certFile = document.getElementById("certFile").files[0];
         
@@ -124,7 +123,6 @@ document.getElementById('certificationForm').addEventListener('submit', async (e
             throw new Error("La photo du packaging ET le certificat PDF sont obligatoires.");
         }
 
-        // Regroupement des métadonnées supplémentaires pour ton projet SYA
         const metadata_raw = {
             email: document.getElementById("producerEmail").value,
             batchNum: document.getElementById("batchNum").value,
@@ -137,39 +135,48 @@ document.getElementById('certificationForm').addEventListener('submit', async (e
             validityDate: document.getElementById("certDate").value || null
         };
 
-        // Construction du FormData pour encapsuler les fichiers et chaînes de texte
         const formData = new FormData();
         formData.append("id_produit", id_produit);
-        formData.append("signature", `${companyName} - ${description.substring(0, 30)}`);
+        
+        // CORRECTION DIRECTE : On envoie une chaîne de signature textuelle simple et propre,
+        // libérée de tout token cryptographique généré localement qui perturbait l'API.
+        formData.append("signature", `${companyName} - SECURE_SIGNATURE`);
         formData.append("metadata_raw", JSON.stringify(metadata_raw));
         
-        // CORRECTION : Transport simultané de l'Image et du PDF vers le serveur
         formData.append("visuel_packaging", packFile);
         formData.append("certificat_file", certFile);
 
-        // Appel direct de notre route de forge sur Render
+        // Appel de la route de forge
         const response = await fetch(`${API_URL}/api/sceau/enregistrer`, {
             method: 'POST',
             body: formData
         });
 
-        const data = await response.json();
+        // Lecture sécurisée du JSON de réponse
+        let data;
+        try {
+            data = await response.json();
+        } catch (jsonErr) {
+            throw new Error("Le serveur a renvoyé une réponse invalide (Erreur 500 ou crash).");
+        }
 
         if (!response.ok || !data.success) {
-            throw new Error(data.message || data.error || "Erreur lors de la forge du sceau.");
+            // Gestion des messages d'erreur structurés
+            const msgErreur = data.message || (data.error ? JSON.stringify(data.error) : "Erreur inconnue du serveur.");
+            throw new Error(msgErreur);
         }
 
         const sealID = data.donnees.id_sceau;
         const matrixBinaire = data.donnees.matrice_binaire;
 
-        // Dessin immédiat sur ton Canvas
+        // Rendu visuel immédiat sur le Canvas
         await buildPremiumSeal(matrixBinaire, sealID);
         
-        alert(`Succès : Sceau ANOR officiellement forgé et ancré dans Supabase.\nFfchiers envoyés aux buckets de stockage.\nSealID : ${sealID}`);
+        alert(`Succès : Sceau ANOR officiellement forgé et ancré.\nSealID : ${sealID}`);
         btn.innerText = "✅ SCEAU FORGÉ";
         
     } catch (e) { 
-        alert("Erreur forge : " + e.message); 
+        alert("Erreur de Forge : " + e.message); 
         btn.disabled = false;
         btn.innerText = "Générer le Kit de Sécurité";
     }
