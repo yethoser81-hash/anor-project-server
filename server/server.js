@@ -5,16 +5,22 @@ const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const upload = multer(); // Pour gérer les FormData (fichiers + textes)
+const upload = multer();
 
 app.use(cors());
 app.use(express.json());
 
-// Client avec accès total utilisant la variable SUPABASE_KEY configurée sur Render
-const supabase = createClient(
-    process.env.SUPABASE_URL, 
-    process.env.SUPABASE_KEY
-);
+// VÉRIFICATION CRITIQUE : on récupère la clé depuis Render
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+// Si la clé est absente, on bloque tout de suite avec un message explicite
+if (!supabaseKey) {
+    console.error("ERREUR CRITIQUE : La variable SUPABASE_KEY est absente de la configuration Render.");
+    process.exit(1); 
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 app.post('/api/sceau/enregistrer', upload.fields([
     { name: 'visuel_packaging' },
@@ -23,11 +29,9 @@ app.post('/api/sceau/enregistrer', upload.fields([
     try {
         const { id_produit, signature, metadata_raw } = req.body;
         
-        // Génération d'une matrice binaire aléatoire simple (64 bits pour le sceau)
         const matrice_binaire = Array.from({length: 64}, () => Math.random() > 0.5 ? '1' : '0').join('');
         const id_sceau = `SCEAU_${Date.now()}`;
 
-        // Insertion dans la base
         const { error } = await supabase
             .from('sya_sceau')
             .insert([{
@@ -35,13 +39,12 @@ app.post('/api/sceau/enregistrer', upload.fields([
                 id_produit: id_produit,
                 signature: signature,
                 matrice_binaire: matrice_binaire,
-                metadata_raw: JSON.parse(metadata_raw),
+                metadata_raw: typeof metadata_raw === 'string' ? JSON.parse(metadata_raw) : metadata_raw,
                 statut: 'VALIDE'
             }]);
 
         if (error) throw error;
 
-        // Réponse conforme à ce que ton index.html attend
         res.json({
             success: true,
             donnees: {
