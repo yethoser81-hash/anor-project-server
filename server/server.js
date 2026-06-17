@@ -10,10 +10,10 @@ const upload = multer(); // Pour gérer les FormData (fichiers + textes)
 app.use(cors());
 app.use(express.json());
 
-// Client avec accès total (contourne la RLS)
+// Client avec accès total utilisant la variable SUPABASE_KEY configurée sur Render
 const supabase = createClient(
     process.env.SUPABASE_URL, 
-    process.env.SUPABASE_SERVICE_KEY
+    process.env.SUPABASE_KEY
 );
 
 app.post('/api/sceau/enregistrer', upload.fields([
