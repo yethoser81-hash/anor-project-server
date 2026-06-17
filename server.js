@@ -4,7 +4,7 @@ require('dotenv').config();
 
 // Importation de nos propres modules de données et de sécurité
 const { enregistrerSceau, obtenirSceau } = require('./src/database.js');
-const { limiterRequetes, validerPayloadScan } = require('./src/security.js');
+const { limiterRequetes, validerPayloadScan, genererMatriceSecurite, forgerSceauSVG } = require('./src/security.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,23 +19,54 @@ app.get('/', (req, res) => {
 });
 
 /**
- * ROUTE 1 : Enregistrement d'un nouveau sceau (Sécurisée en local pour la Forge)
+ * ROUTE 1 : Forge et Enregistrement d'un nouveau sceau
  * POST /api/sceau/enregistrer
  */
 app.post('/api/sceau/enregistrer', async (req, res) => {
-    const { id_sceau, id_produit, signature, matrice_binaire } = req.body;
+    try {
+        const { id_sceau, id_produit, signature } = req.body;
 
-    // Validation rapide de la présence des champs essentiels
-    if (!id_sceau || !id_produit || !signature || !matrice_binaire) {
-        return res.status(400).json({ success: false, message: "Données d'enregistrement incomplètes." });
-    }
+        // Validation rapide de la présence des champs essentiels pour la création
+        if (!id_produit || !signature) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Données incomplètes. 'id_produit' et 'signature' (nom/type) sont requis." 
+            });
+        }
 
-    const resultat = await enregistrerSceau(id_sceau, id_produit, signature, matrice_binaire);
+        // 1. Génération automatique de l'ID à 8 caractères s'il n'est pas fourni
+        const finalIdSceau = id_sceau || Math.random().toString(36).substring(2, 10).toUpperCase();
 
-    if (resultat.success) {
-        return res.status(201).json({ success: true, message: "Sceau certifié et enregistré avec succès." });
-    } else {
-        return res.status(500).json({ success: false, error: resultat.error });
+        // 2. Génération automatique de la matrice géométrique binaire de 64 caractères (0 et 1)
+        const matriceBinaire = genererMatriceSecurite();
+
+        // 3. Fabrication du fichier SVG physique contenant la stéganographie
+        const svgSceauContenu = forgerSceauSVG(finalIdSceau, matriceBinaire);
+
+        // 4. Enregistrement et ancrage dans le registre Supabase via ta fonction existante
+        const resultat = await enregistrerSceau(finalIdSceau, id_produit, signature, matriceBinaire);
+
+        if (resultat.success) {
+            // On renvoie le succès, les données générées et le code SVG prêt à l'emploi !
+            return res.status(201).json({ 
+                success: true, 
+                message: "Sceau certifié, forgé et enregistré avec succès.",
+                donnees: {
+                    id_sceau: finalIdSceau,
+                    matrice_binaire: matriceBinaire,
+                    svg: svgSceauContenu
+                }
+            });
+        } else {
+            // Gestion des collisions d'identifiants uniques
+            if (resultat.error && resultat.error.code === '23505') {
+                return res.status(409).json({ success: false, message: "Un sceau avec cet identifiant existe déjà." });
+            }
+            return res.status(500).json({ success: false, error: resultat.error });
+        }
+    } catch (err) {
+        console.error("Erreur Forge :", err.message);
+        return res.status(500).json({ success: false, message: "Erreur interne lors de la forge du sceau." });
     }
 });
 
@@ -75,7 +106,6 @@ app.post('/api/sceau/verifier', limiterRequetes, validerPayloadScan, async (req,
     }
 
     // 4. Cœur de la vérification physique : Comparaison de la matrice géométrique lue par la caméra
-    // L'APK envoie la chaîne de 0 et 1 extraite de l'image, le serveur la compare à la matrice d'origine
     if (matrice_binaire === matrice_scanne) {
         return res.json({
             authentique: true,
