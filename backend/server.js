@@ -76,7 +76,7 @@ app.post('/api/produit/enregistrer', async (req, res) => {
         const signature = crypto.createHmac('sha256', ANOR_SECRET).update(`${nom_produit}-${lot}-${Date.now()}`).digest('hex');
         
         const produitData = {
-            nom_produit, nom_producteur, lot, type_emballage, caracteristique_produit, pays_origine, visuel_url,
+            nom_produit, nom_producteur, lot, type_emballage, caracteristique_produit, pays_origine, visuel_url: url_visuel,
             code_sceau: signature,
             segment_noyau: signature.substring(0, 20),
             segment_transition: signature.substring(20, 40),
@@ -104,7 +104,7 @@ app.post('/api/produit/verifier', upload.single('sceau'), async (req, res) => {
         
         const { data, error } = await supabase
             .from('sya_produit_certifie')
-            .select('nom_produit, nom_producteur, pays_origine, type_emballage, caracteristique_produit, url_visuel, date_certificat_conformite, date_fabrication, date_peremption')
+            .select('nom_produit, nom_producteur, pays_origine, type_emballage, caracteristique_produit, visuel_url, date_certificat_conformite, date_fabrication, date_peremption')
             .eq('segment_noyau', signature.noyau)
             .eq('segment_transition', signature.transition)
             .eq('segment_peripherie', signature.peripherie)
