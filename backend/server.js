@@ -76,7 +76,7 @@ app.post('/api/produit/enregistrer', async (req, res) => {
         const signature = crypto.createHmac('sha256', ANOR_SECRET).update(`${nom_produit}-${lot}-${Date.now()}`).digest('hex');
         
         const produitData = {
-            nom_produit, nom_producteur, lot, type_emballage, caracteristique_produit, pays_origine, url_visuel,
+            nom_produit, nom_producteur, lot, type_emballage, caracteristique_produit, pays_origine, visuel_url,
             code_sceau: signature,
             segment_noyau: signature.substring(0, 20),
             segment_transition: signature.substring(20, 40),

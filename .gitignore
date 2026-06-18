@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dépendances Node
 node_modules/
 
@@ -13,3 +14,7 @@ node_modules/
 build/
 .metadata
 *.iml
+=======
+node_modules/
+.env
+>>>>>>> 5a82e4f856a7fec7cc8e1028980f359cc5953312
