@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forge ANOR - Certification Souveraine (Haute Sécurité)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root { --anor-blue: #336699; --bg-color: #f4f7f6; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); display: flex; justify-content: center; padding: 20px; }
+        .main-wrapper { display: flex; gap: 30px; width: 100%; max-width: 1200px; align-items: flex-start; }
+        .forge-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 40%; }
+        .preview-pane { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 60%; text-align: center; }
+        h2 { color: var(--anor-blue); text-align: center; border-bottom: 2px solid var(--anor-blue); padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.85em; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { background: var(--anor-blue); color: white; padding: 12px; border: none; cursor: pointer; width: 100%; border-radius: 6px; font-weight: bold; transition: background 0.3s; }
+        button:hover { background: #2a5580; }
+        .hidden { display: none; }
+        #sceau_zone { margin-top: 25px; padding: 20px; border: 2px dashed var(--anor-blue); border-radius: 10px; text-align: center; display: none; }
+        canvas { background: white; border-radius: 50%; box-shadow: 0 0 15px rgba(0,0,0,0.15); border: 2px solid #ccc; width: 300px; height: 300px; }
+        #btnDownload { background: #28a745; margin-top: 15px; font-size: 1.1em; }
+        #btnDownload:hover { background: #218838; }
+        #img_preview { width: 100%; max-width: 300px; height: auto; border: 2px solid #ccc; border-radius: 10px; margin-bottom: 15px; display: block; margin: 10px auto; }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+    <div class="forge-card">
+        <h2>FORGE ANOR - HAUTE SÉCURITÉ</h2>
+        <form id="forgeForm">
+            <div class="form-group"><label>NOM PRODUIT</label><input type="text" id="nom_produit" required></div>
+            <div class="form-group"><label>PRODUCTEUR</label><input type="text" id="nom_producteur" required></div>
+            <div class="form-group"><label>CARACTÉRISTIQUES PRODUIT</label><input type="text" id="caracteristiques" required></div>
+            <div class="form-group"><label>LOT</label><input type="text" id="lot" required></div>
+            <div class="form-group"><label>EMBALLAGE</label><input type="text" id="type_emballage" required></div>
+            <div class="form-group"><label>PAYS D'ORIGINE</label><input type="text" id="pays_origine" oninput="toggleFields()" placeholder="Ex: Cameroun"></div>
+            <div class="form-group"><label>VISUEL PRODUIT</label><input type="file" id="file_visuel" accept="image/*" onchange="previewFile()"></div>
+            <div class="form-group"><label>CERTIFICAT (PDF)</label><input type="file" id="file_certificat" accept=".pdf"></div>
+            
+            <div id="camerounFields" class="hidden"><div class="form-group"><label>DATE CERTIFICAT CONFORMITÉ</label><input type="date" id="date_certificat_conformite"></div></div>
+            <div id="autreFields"><div class="form-group"><label>FABRICATION</label><input type="date" id="date_fabrication"></div><div class="form-group"><label>PÉREMPTION</label><input type="date" id="date_peremption"></div></div>
+            
+            <button type="submit">GÉNÉRER L'EMPREINTE UNIQUE</button>
+        </form>
+    </div>
+
+    <div class="preview-pane">
+        <h2>PRÉVISUALISATION</h2>
+        <img id="img_preview" src="" alt="Visuel">
+        <div id="sceau_zone">
+            <h3>Sceau Officiel Unique (Nébuleuse)</h3>
+            <canvas id="sceauCanvas" width="1000" height="1000"></canvas>
+            <p id="sig_debug" style="font-size: 0.7em; margin-top: 10px; color: #666;"></p>
+            <button id="btnDownload" onclick="telechargerKit()">📥 TÉLÉCHARGER LE KIT HD (ZIP)</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const BLEU_ANOR = "#336699";
+    const CENTRE_HD = 500;
+
+    function previewFile() {
+        const file = document.getElementById('file_visuel').files[0];
+        const reader = new FileReader();
+        reader.onload = (e) => document.getElementById('img_preview').src = e.target.result;
+        reader.readAsDataURL(file);
+    }
+
+    function toggleFields() {
+        const pays = document.getElementById('pays_origine').value.toLowerCase().trim();
+        document.getElementById('camerounFields').classList.toggle('hidden', pays !== 'cameroun');
+        document.getElementById('autreFields').classList.toggle('hidden', pays === 'cameroun');
+    }
+
+    async function telechargerKit() {
+        const zip = new JSZip();
+        const nom = document.getElementById('nom_produit').value.replace(/\s+/g, '_');
+        const prod = document.getElementById('nom_producteur').value.replace(/\s+/g, '_');
+        const prefix = `${nom}_${prod}`;
+
+        const modeEmploi = `GUIDE D'UTILISATION - SCEAU DE CERTIFICATION ANOR
+-----------------------------------------------------------
+1. CONDITIONS DE LISIBILITÉ :
+   - Taille minimale : 15 mm de diamètre (ne pas descendre en dessous).
+   - Distance de lecture par l'APK : 5 cm avec une mise au point stable.
+
+2. EXIGENCES D'IMPRESSION (CRITIQUE) :
+   - TYPE D'IMPRESSION : Exclusivement LASER HAUTE DÉFINITION (min. 600 DPI).
+   - INTERDICTIONS : 
+       - AUCUNE impression JET D'ENCRE (bavures garanties).
+       - AUCUNE imprimante matricielle ou thermique basse résolution.
+   - SUPPORT : Papier couché (glacé) ou étiquettes vinyles. Le papier poreux est proscrit.
+
+3. SUPPORT TECHNIQUE ET IMPRESSION CERTIFIÉE :
+   - Pour garantir la validité de votre sceau, contactez notre imprimerie partenaire agréée :
+   - SERVICE IMPRESSION FORGE : (+237) 6XX XXX XXX.
+
+4. INTÉGRITÉ :
+   - Toute altération physique rendra le sceau non valide.`;
+
+        const texteJuridique = `AVERTISSEMENT LÉGAL ET PROPRIÉTÉ INTELLECTUELLE - ANOR
+-----------------------------------------------------------
+1. PROPRIÉTÉ EXCLUSIVE :
+   Le sceau de certification ANOR ainsi que l'algorithme cryptographique 
+   associé sont la propriété exclusive de l'Agence des Normes et de la Qualité (ANOR). 
+   Ce sceau est une œuvre protégée par les lois nationales et internationales 
+   sur la propriété intellectuelle.
+
+2. USAGE AUTORISÉ :
+   L'utilisation de ce sceau est strictement limitée au produit et au lot 
+   pour lesquels il a été généré via la plateforme officielle de la Forge ANOR. 
+   Toute utilisation détournée, reproduction non autorisée, altération, 
+   imitation ou tentative de contrefaçon est formellement interdite.
+
+3. SANCTIONS PÉNALES :
+   Toute reproduction, représentation ou destruction du sceau ANOR sans 
+   autorisation expresse entraînera des poursuites judiciaires immédiates. 
+   Les contrevenants s'exposent à des sanctions pénales lourdes pour contrefaçon 
+   de marque, usurpation de certification officielle et mise en danger des consommateurs.`;
+
+        zip.file(`${prefix}_Sceau.png`, document.getElementById('sceauCanvas').toDataURL().split(',')[1], {base64: true});
+        zip.file("Mode_d_emploi_technique.txt", modeEmploi);
+        zip.file("Textes_Juridiques_Contrefacon.txt", texteJuridique);
+        
+        const visuel = document.getElementById('file_visuel').files[0];
+        if(visuel) zip.file(`${prefix}_Visuel.png`, visuel);
+        
+        const content = await zip.generateAsync({type:"blob"});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `${prefix}_Kit_Complet.zip`;
+        link.click();
+    }
+
+    document.getElementById('forgeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = {
+            nom_produit: document.getElementById('nom_produit').value,
+            nom_producteur: document.getElementById('nom_producteur').value,
+            lot: document.getElementById('lot').value,
+            type_emballage: document.getElementById('type_emballage').value,
+            caracteristique_produit: document.getElementById('caracteristiques').value,
+            pays_origine: document.getElementById('pays_origine').value,
+            date_certificat_conformite: document.getElementById('date_certificat_conformite').value,
+            date_fabrication: document.getElementById('date_fabrication').value,
+            date_peremption: document.getElementById('date_peremption').value
+        };
+
+        const response = await fetch('/api/produit/enregistrer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        });
+
+        const result = await response.json();
+
+        if (response.status === 409) {
+            alert("ALERTE : Ce produit et ce lot ont déjà été certifiés. Doublon rejeté.");
+            return;
+        }
+
+        if (result.success) {
+            document.getElementById('sceau_zone').style.display = 'block';
+            document.getElementById('sig_debug').innerText = "Signature: " + result.code_sceau.substring(0, 32) + "...";
+            dessinerSceauNébuleuse(result.structure_sceau);
+        } else {
+            alert("Erreur lors de la forge : " + result.message);
+        }
+    });
+
+    async function dessinerSceauNébuleuse(s) {
+        const canvas = document.getElementById('sceauCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 1000, 1000);
+        const centre = CENTRE_HD;
+
+        ctx.strokeStyle = BLEU_ANOR;
+        ctx.lineWidth = 15;
+        ctx.beginPath(); ctx.arc(centre, centre, 480, 0, Math.PI * 2); ctx.stroke();
+
+        const logoSize = 210;
+        const img = new Image();
+        img.src = 'logo_anor_master.png';
+        try { await new Promise(r => img.onload = r); } catch(e) {}
+        ctx.drawImage(img, centre - logoSize, centre - logoSize, logoSize * 2, logoSize * 2);
+
+        const anneaux = [
+            { data: s.noyau, rayon: 280, count: 20, size: 16, jitter: 0 },
+            { data: s.transition, rayon: 360, count: 30, size: 20, jitter: 0 },
+            { data: s.peripherie, rayon: 440, count: 40, size: 26, jitter: 0 }
+        ];
+
+        anneaux.forEach((anneau) => {
+            const charArray = anneau.data.split('');
+            for (let i = 0; i < anneau.count; i++) {
+                const angle = (i / anneau.count) * Math.PI * 2;
+                const val = parseInt(charArray[i % charArray.length], 16);
+                const offsetR = (anneau.jitter > 0) ? -anneau.jitter + (val % anneau.jitter) * 2 : 0;
+                const rEffective = anneau.rayon + offsetR;
+                const x = centre + Math.cos(angle) * rEffective;
+                const y = centre + Math.sin(angle) * rEffective;
+
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(angle + Math.PI / 2);
+                const taille = anneau.size;
+                const etat = (val % 4);
+
+                ctx.fillStyle = BLEU_ANOR;
+                ctx.strokeStyle = BLEU_ANOR;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+
+                switch(val % 8) {
+                    case 0: ctx.arc(0, 0, taille/2, 0, Math.PI * 2); break;
+                    case 1: ctx.rect(-taille/2, -taille/2, taille, taille); break;
+                    case 2: ctx.rect(-taille, -taille/2.5, taille*2, taille/1.25); break;
+                    case 3: ctx.moveTo(0, -taille/1.4); ctx.lineTo(taille/1.4, taille/1.4); ctx.lineTo(-taille/1.4, taille/1.4); break;
+                    case 4: ctx.moveTo(0, -taille/1.1); ctx.lineTo(taille/1.1, 0); ctx.lineTo(0, taille/1.1); ctx.lineTo(-taille/1.1, 0); break;
+                    case 5: ctx.moveTo(-taille/2, 0); ctx.lineTo(taille/2, 0); ctx.moveTo(0, -taille/2); ctx.lineTo(0, taille/2); break;
+                    case 6: ctx.arc(0, 0, taille/1.8, Math.PI/2, Math.PI); break;
+                    case 7: ctx.rect(-taille/2.5, -taille, taille/1.25, taille*2); break;
+                }
+
+                if (etat === 0) ctx.fill(); 
+                else if (etat === 1) ctx.stroke();
+                else {
+                    ctx.save();
+                    ctx.beginPath();
+                    etat === 2 ? ctx.rect(-taille, -taille*1.5, taille, taille*3) : ctx.rect(0, -taille*1.5, taille, taille*3);
+                    ctx.clip();
+                    ctx.fill();
+                    ctx.restore();
+                }
+                ctx.restore();
+            }
+        });
+    }
+</script>
+</body>
+</html>

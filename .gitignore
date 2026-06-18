@@ -1,2 +1,15 @@
-﻿node_modules/
+# Dépendances Node
+node_modules/
+
+# Secrets (TRÈS IMPORTANT)
 .env
+
+# Flutter / APK
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+.metadata
+*.iml
