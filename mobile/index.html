@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ANOR - Vérification Officielle</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app-container">
+    <div class="national-stripe"><div class="stripe-green"></div><div class="stripe-red">★</div><div class="stripe-yellow"></div></div>
+    <header class="header-unit">
+        <div id="status-indicator"></div>
+        <img src="logo_anor.png" alt="ANOR" class="anor-logo-top">
+        <div class="header-band">CONFORMITY CHECK / VÉRIFICATION</div>
+    </header>
+    
+    <main id="app-body">
+        <div id="screen-home" class="screen">
+            <div class="vision-wrapper" onclick="declencherScan()">
+                <video id="video-preview" autoplay playsinline muted></video>
+                <canvas id="canvas-capture" style="display:none;"></canvas>
+                <div class="seal-overlay"><div class="seal-ring"></div></div>
+                <div id="laser-line" class="scan-bar hidden"></div>
+                <div id="placeholder-ui"><div style="font-size:52px;">📸</div><div class="scan-title">TOUCHER POUR SCANNER</div></div>
+            </div>
+            <div id="status-msg">Pointez le sceau ANOR sécurisé</div>
+            <div class="scan-sub">Scanner officiel compatible uniquement ANOR</div>
+        </div>
+        
+        <div id="screen-result" class="screen hidden">
+            <div class="result-card">
+                <img id="pack-img" src="" alt="Packaging">
+                <div class="cert-badge">✓ PRODUIT CERTIFIÉ CONFORME</div>
+                <table class="info-table" id="res-table"></table>
+                <p style="text-align:center; font-size:12px; margin-top:15px;">Les informations sont-elles conformes ?</p>
+                <button class="btn-action" onclick="showScreen('screen-home')">OUI</button>
+                <button class="btn-action btn-red" onclick="showScreen('screen-report')">NON - SIGNALER</button>
+            </div>
+        </div>
+
+        <div id="screen-report" class="screen hidden">
+            <div class="result-card">
+                <h3>Signaler une contrefaçon</h3>
+                <button class="btn-action" onclick="window.location.href='tel:+237000000000'">APPEL COURT</button>
+                <button class="btn-action" style="background:#25d366;" onclick="window.location.href='https://wa.me/237000000000'">WHATSAPP</button>
+                <button class="btn-action btn-red" onclick="showScreen('screen-home')">RETOUR ACCUEIL</button>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="anor-message-container"><div class="info-badge">INFOS</div><marquee scrollamount="4" style="font-size:10px; width:100%;">Vérifiez systématiquement le sceau numérique officiel ANOR avant achat.</marquee></div>
+        <div class="footer-ad-container"><div class="ad-banner">Soutenez l'industrie locale : Consommez certifié !</div></div>
+        <p class="copyright">© 2026 ANOR | Solution développée par YEMGA & FILS</p>
+    </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

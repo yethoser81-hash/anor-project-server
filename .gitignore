@@ -1,20 +1,12 @@
-<<<<<<< HEAD
-# Dépendances Node
+# Dépendances
 node_modules/
 
-# Secrets (TRÈS IMPORTANT)
+# Secrets et configurations locales
 .env
+.env.*
 
-# Flutter / APK
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-.pub-cache/
+# Fichiers de log et systèmes
+*.log
+*.DS_Store
+dist/
 build/
-.metadata
-*.iml
-=======
-node_modules/
-.env
->>>>>>> 5a82e4f856a7fec7cc8e1028980f359cc5953312
