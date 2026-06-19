@@ -116,7 +116,10 @@ app.post('/api/produit/enregistrer', async (req, res) => {
         // AMÉLIORATION : Segmentation sécurisée du hash
         // Ces segments seront "encodés" visuellement sur le sceau physique
         const produitData = {
-            ...req.body, // Inclure tous les champs envoyés (ceux d'origine)
+            nom_produit,
+            nom_producteur,
+            lot,
+            pays_origine,
             visuel_url: url_visuel || 'p_default.png',
             
             // Stockage des segments pour la comparaison
