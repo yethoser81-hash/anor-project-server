@@ -65,6 +65,7 @@
 
     function previewFile() {
         const file = document.getElementById('file_visuel').files[0];
+        if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => document.getElementById('img_preview').src = e.target.result;
         reader.readAsDataURL(file);
@@ -139,6 +140,10 @@
     document.getElementById('forgeForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        // Récupération du nom de fichier pour le visuel
+        const fileInput = document.getElementById('file_visuel');
+        const fileName = fileInput.files.length > 0 ? fileInput.files[0].name : 'p_default.png';
+        
         const formData = {
             nom_produit: document.getElementById('nom_produit').value,
             nom_producteur: document.getElementById('nom_producteur').value,
@@ -146,6 +151,7 @@
             type_emballage: document.getElementById('type_emballage').value,
             caracteristique_produit: document.getElementById('caracteristiques').value,
             pays_origine: document.getElementById('pays_origine').value,
+            visuel_url: fileName, // <--- Correction effectuée ici
             date_certificat_conformite: document.getElementById('date_certificat_conformite').value,
             date_fabrication: document.getElementById('date_fabrication').value,
             date_peremption: document.getElementById('date_peremption').value
