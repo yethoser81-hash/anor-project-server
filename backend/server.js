@@ -85,7 +85,7 @@ app.post('/api/produit/enregistrer', async (req, res) => {
             lot,
             pays_origine,
             url_visuel,
-            // Autres champs optionnels que vous aviez
+            type_emballage // Reçu depuis l'appel de la forge s'il existe
         } = req.body;
 
         // Validation minimale des champs requis
@@ -121,6 +121,10 @@ app.post('/api/produit/enregistrer', async (req, res) => {
             lot,
             pays_origine,
             visuel_url: url_visuel || 'p_default.png',
+            
+            // CORRECTION CONTRAINTE NOT NULL SUPABASE :
+            // Sécurité pour empêcher le plantage si la variable est absente ou vide
+            type_emballage: type_emballage || "Non spécifié",
             
             // Stockage des segments pour la comparaison
             code_sceau: signature, // Hash complet de référence
@@ -328,7 +332,7 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log("-------------------------------------------------");
-    console.log(`[OK] ANOR Server (SYA) d&émarré sur le port ${PORT}`);
+    console.log(`[OK] ANOR Server (SYA) démarré sur le port ${PORT}`);
     console.log(`[INFO] Supabase URL : ${process.env.SUPABASE_URL}`);
     console.log("-------------------------------------------------");
 });
