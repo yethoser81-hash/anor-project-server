@@ -54,7 +54,7 @@
             <h3>Sceau Officiel Unique (Nébuleuse)</h3>
             <canvas id="sceauCanvas" width="1000" height="1000"></canvas>
             <p id="sig_debug" style="font-size: 0.7em; margin-top: 10px; color: #666;"></p>
-            <button id="btnDownload" onclick="telechargerKit()">📥 TÉLÉCHARGER LE KIT HD (ZIP)</button>
+            <button id="btnDownload" type="button" onclick="telechargerKit()">📥 TÉLÉCHARGER LE KIT HD (ZIP)</button>
         </div>
     </div>
 </div>
@@ -140,7 +140,6 @@
     document.getElementById('forgeForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Récupération du nom de fichier pour le visuel
         const fileInput = document.getElementById('file_visuel');
         const fileName = fileInput.files.length > 0 ? fileInput.files[0].name : 'p_default.png';
         
@@ -149,99 +148,193 @@
             nom_producteur: document.getElementById('nom_producteur').value,
             lot: document.getElementById('lot').value,
             type_emballage: document.getElementById('type_emballage').value,
-            caracteristique_produit: document.getElementById('caracteristiques').value,
+            caracteristiques: document.getElementById('caracteristiques').value,
             pays_origine: document.getElementById('pays_origine').value,
-            visuel_url: fileName, // <--- Correction effectuée ici
+            visuel_url: fileName,
             date_certificat_conformite: document.getElementById('date_certificat_conformite').value,
             date_fabrication: document.getElementById('date_fabrication').value,
             date_peremption: document.getElementById('date_peremption').value
         };
 
-        const response = await fetch('/api/produit/enregistrer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
+        let result;
+        try {
+            const response = await fetch('/api/produit/enregistrer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
 
-        const result = await response.json();
+            result = await response.json();
 
-        if (response.status === 409) {
-            alert("ALERTE : Ce produit et ce lot ont déjà été certifiés. Doublon rejeté.");
+            if (!response.ok && response.status !== 409) {
+                throw new Error(result.message || "Erreur serveur");
+            }
+
+            if (response.status === 409) {
+                alert("ALERTE : Ce produit et ce lot ont déjà été certifiés.");
+                return;
+            }
+
+            if (result.success) {
+                document.getElementById('sceau_zone').style.display = 'block';
+                document.getElementById('sig_debug').innerText = "Signature: " + result.code_sceau.substring(0, 32) + "...";
+                dessinerSceauNébuleuse(
+                    result.structure_sceau,
+                    result.bibliotheque
+                );
+            } else {
+                alert("Erreur lors de la forge : " + result.message);
+            }
+        } catch(error) {
+            alert("Impossible de contacter le serveur.");
             return;
-        }
-
-        if (result.success) {
-            document.getElementById('sceau_zone').style.display = 'block';
-            document.getElementById('sig_debug').innerText = "Signature: " + result.code_sceau.substring(0, 32) + "...";
-            dessinerSceauNébuleuse(result.structure_sceau);
-        } else {
-            alert("Erreur lors de la forge : " + result.message);
         }
     });
 
-    async function dessinerSceauNébuleuse(s) {
+    function dessinerForme(ctx, forme, taille) {
+        switch(forme) {
+            case "cercle":
+                ctx.arc(0, 0, taille / 2, 0, Math.PI * 2);
+                break;
+            case "carre":
+                ctx.rect(-taille/2, -taille/2, taille, taille);
+                break;
+            case "rectangle":
+                ctx.rect(-taille, -taille/3, taille*2, taille/1.5);
+                break;
+            case "triangle":
+                ctx.moveTo(0, -taille);
+                ctx.lineTo(taille, taille);
+                ctx.lineTo(-taille, taille);
+                ctx.closePath();
+                break;
+            case "losange":
+                ctx.moveTo(0, -taille);
+                ctx.lineTo(taille, 0);
+                ctx.lineTo(0, taille);
+                ctx.lineTo(-taille, 0);
+                ctx.closePath();
+                break;
+            case "croix":
+                ctx.moveTo(-taille, 0);
+                ctx.lineTo(taille, 0);
+                ctx.moveTo(0, -taille);
+                ctx.lineTo(0, taille);
+                break;
+            case "demi_cercle":
+                ctx.arc(0, 0, taille, Math.PI, 2 * Math.PI);
+                break;
+            case "barre_verticale":
+                ctx.rect(-taille/4, -taille, taille/2, taille*2);
+                break;
+        }
+    }
+
+    async function dessinerSceauNébuleuse(s, bibliotheque) {
         const canvas = document.getElementById('sceauCanvas');
         const ctx = canvas.getContext('2d');
+
         ctx.clearRect(0, 0, 1000, 1000);
+        ctx.imageSmoothingEnabled = true;
+
         const centre = CENTRE_HD;
 
         ctx.strokeStyle = BLEU_ANOR;
         ctx.lineWidth = 15;
-        ctx.beginPath(); ctx.arc(centre, centre, 480, 0, Math.PI * 2); ctx.stroke();
+
+        // Contour externe uniquement
+        ctx.beginPath();
+        ctx.arc(centre, centre, 480, 0, Math.PI * 2);
+        ctx.stroke();
 
         const logoSize = 210;
+        
+        // Bloc robuste de chargement du logo
         const img = new Image();
-        img.src = 'logo_anor_master.png';
-        try { await new Promise(r => img.onload = r); } catch(e) {}
-        ctx.drawImage(img, centre - logoSize, centre - logoSize, logoSize * 2, logoSize * 2);
+        img.crossOrigin = "anonymous";
+        await new Promise((resolve) => {
+            img.onload = resolve;
+            img.onerror = resolve; 
+            img.src = '/logo_anor_master.png';
+        });
+
+        if (img.complete && img.naturalWidth > 0) {
+            ctx.drawImage(
+                img,
+                centre - logoSize,
+                centre - logoSize,
+                logoSize * 2,
+                logoSize * 2
+            );
+        } else {
+            ctx.fillStyle = BLEU_ANOR;
+            ctx.font = "bold 80px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("ANOR", centre, centre + 25);
+        }
+
+        // Effet Ndop
+        for(let i=0; i<72; i++){
+            const angle = (i/72) * Math.PI * 2;
+            const r = 420;
+            const x = centre + Math.cos(angle) * r;
+            const y = centre + Math.sin(angle) * r;
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(angle);
+            ctx.beginPath();
+            ctx.moveTo(-6, 0);
+            ctx.lineTo(6, 0);
+            ctx.moveTo(0, -6);
+            ctx.lineTo(0, 6);
+            ctx.strokeStyle = BLEU_ANOR;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+        }
 
         const anneaux = [
-            { data: s.noyau, rayon: 280, count: 20, size: 16, jitter: 0 },
-            { data: s.transition, rayon: 360, count: 30, size: 20, jitter: 0 },
-            { data: s.peripherie, rayon: 440, count: 40, size: 26, jitter: 0 }
+            {
+                data: bibliotheque.noyau,
+                rayon: 250,
+                size: 18,
+                decalage: 0
+            },
+            {
+                data: bibliotheque.transition,
+                rayon: 320,
+                size: 18,
+                decalage: 0.05
+            },
+            {
+                data: bibliotheque.peripherie,
+                rayon: 390,
+                size: 18,
+                decalage: 0.1
+            }
         ];
 
         anneaux.forEach((anneau) => {
-            const charArray = anneau.data.split('');
-            for (let i = 0; i < anneau.count; i++) {
-                const angle = (i / anneau.count) * Math.PI * 2;
-                const val = parseInt(charArray[i % charArray.length], 16);
-                const offsetR = (anneau.jitter > 0) ? -anneau.jitter + (val % anneau.jitter) * 2 : 0;
-                const rEffective = anneau.rayon + offsetR;
-                const x = centre + Math.cos(angle) * rEffective;
-                const y = centre + Math.sin(angle) * rEffective;
+            const total = anneau.data.length;
+            for(let i = 0; i < total; i++) {
+                const item = anneau.data[i];
+                const angle = (i / total) * Math.PI * 2 + anneau.decalage;
+                const x = centre + Math.cos(angle) * anneau.rayon;
+                const y = centre + Math.sin(angle) * anneau.rayon;
 
                 ctx.save();
                 ctx.translate(x, y);
-                ctx.rotate(angle + Math.PI / 2);
-                const taille = anneau.size;
-                const etat = (val % 4);
-
+                ctx.rotate(angle);
+                ctx.beginPath();
+                dessinerForme(ctx, item.forme, anneau.size);
+                
                 ctx.fillStyle = BLEU_ANOR;
                 ctx.strokeStyle = BLEU_ANOR;
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-
-                switch(val % 8) {
-                    case 0: ctx.arc(0, 0, taille/2, 0, Math.PI * 2); break;
-                    case 1: ctx.rect(-taille/2, -taille/2, taille, taille); break;
-                    case 2: ctx.rect(-taille, -taille/2.5, taille*2, taille/1.25); break;
-                    case 3: ctx.moveTo(0, -taille/1.4); ctx.lineTo(taille/1.4, taille/1.4); ctx.lineTo(-taille/1.4, taille/1.4); break;
-                    case 4: ctx.moveTo(0, -taille/1.1); ctx.lineTo(taille/1.1, 0); ctx.lineTo(0, taille/1.1); ctx.lineTo(-taille/1.1, 0); break;
-                    case 5: ctx.moveTo(-taille/2, 0); ctx.lineTo(taille/2, 0); ctx.moveTo(0, -taille/2); ctx.lineTo(0, taille/2); break;
-                    case 6: ctx.arc(0, 0, taille/1.8, Math.PI/2, Math.PI); break;
-                    case 7: ctx.rect(-taille/2.5, -taille, taille/1.25, taille*2); break;
-                }
-
-                if (etat === 0) ctx.fill(); 
-                else if (etat === 1) ctx.stroke();
-                else {
-                    ctx.save();
-                    ctx.beginPath();
-                    etat === 2 ? ctx.rect(-taille, -taille*1.5, taille, taille*3) : ctx.rect(0, -taille*1.5, taille, taille*3);
-                    ctx.clip();
+                
+                if(i % 2 === 0) {
                     ctx.fill();
-                    ctx.restore();
+                } else {
+                    ctx.stroke();
                 }
                 ctx.restore();
             }

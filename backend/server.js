@@ -5,9 +5,11 @@ const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 const crypto = require('crypto');
 const path = require('path');
-const sharp = require('sharp');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
+const { exec } = require('child_process');
+const fs = require('fs');
+const enrichirBibliotheque = require('./ia_constructeur');
 
 const app = express();
 
@@ -75,8 +77,12 @@ app.post('/api/produit/enregistrer', async (req, res) => {
             nom_producteur,
             lot,
             pays_origine,
-            url_visuel,
-            type_emballage 
+            visuel_url,
+            type_emballage,
+            caracteristiques,
+            date_fabrication,
+            date_peremption,
+            date_certificat_conformite
         } = req.body;
 
         if (!nom_produit || !nom_producteur || !lot || !pays_origine) {
@@ -94,32 +100,48 @@ app.post('/api/produit/enregistrer', async (req, res) => {
             return res.status(409).json({ success: false, message: "Ce lot de produit est déjà enregistré." });
         }
 
-        // --- GÉNÉRATION DE LA SIGNATURE CRYPTOGRAPHIQUE BINAIRE LISSÉE ---
+        // SIGNATURE
         const salt = Date.now().toString();
+
         const hmacBuffer = crypto
             .createHmac('sha256', ANOR_SECRET)
             .update(`${nom_produit}-${nom_producteur}-${lot}-${salt}`)
             .digest();
 
-        // Conversion du buffer en chaîne de bits pure (0 et 1)
         let signatureBinaire = "";
         for (const byte of hmacBuffer) {
             signatureBinaire += byte.toString(2).padStart(8, '0');
         }
 
-        // Segmentation stricte des bits pour correspondre aux rayons géométriques (Total: 90 bits)
+        // Coupe à 90 bits pour une cohérence parfaite
+        signatureBinaire = signatureBinaire.substring(0, 90);
+
+        // IA BIBLIOTHÈQUE (SOURCE UNIQUE DE VÉRITÉ)
+        const bibliotheque = enrichirBibliotheque(signatureBinaire);
+
+        const cleanDate = (d) => (d && d.trim() !== "" ? d : null);
+
         const produitData = {
             nom_produit,
             nom_producteur,
             lot,
             pays_origine,
-            visuel_url: url_visuel || 'p_default.png',
+            visuel_url: visuel_url || 'p_default.png',
             type_emballage: type_emballage || "Non spécifié",
-            
-            code_sceau: signatureBinaire, 
-            segment_noyau: signatureBinaire.substring(0, 20),       // 20 bits
-            segment_transition: signatureBinaire.substring(20, 50),  // 30 bits
-            segment_peripherie: signatureBinaire.substring(50, 90),  // 40 bits
+            caracteristiques: caracteristiques || "Non spécifié",
+
+            date_fabrication: cleanDate(date_fabrication),
+            date_peremption: cleanDate(date_peremption),
+            date_certificat_conformite: cleanDate(date_certificat_conformite),
+
+            code_sceau: signatureBinaire,
+
+            segment_noyau: signatureBinaire.substring(0, 20),
+            segment_transition: signatureBinaire.substring(20, 50),
+            segment_peripherie: signatureBinaire.substring(50, 90),
+
+            // IMPORTANT : version exploitable par APK + IA
+            bibliotheque_formes: JSON.stringify(bibliotheque)
         };
 
         const { error } = await supabase
@@ -132,16 +154,25 @@ app.post('/api/produit/enregistrer', async (req, res) => {
             success: true,
             message: "Produit enregistré avec succès.",
             code_sceau: signatureBinaire,
+
             structure_sceau: {
                 noyau: produitData.segment_noyau,
                 transition: produitData.segment_transition,
                 peripherie: produitData.segment_peripherie
-            }
+            },
+
+            // 🔥 IMPORTANT : on expose la bibliothèque au front
+            bibliotheque
         });
 
     } catch (err) {
-        console.error("Erreur Enregistrement:", err);
-        res.status(500).json({ success: false, message: "Erreur interne du serveur." });
+        console.error("❌ ERREUR FORGE COMPLET :", err);
+
+        return res.status(500).json({
+            success: false,
+            message: err.message,
+            stack: err.stack
+        });
     }
 });
 
@@ -149,8 +180,10 @@ app.post('/api/produit/enregistrer', async (req, res) => {
 /* ==========================================
    4. MOTEUR DE LECTURE OPTIQUE IA PYTHON (COMMUNICATION)
 ========================================== */
-const { exec } = require('child_process');
-const fs = require('fs');
+
+function hashBits(bits){
+    return crypto.createHash('sha256').update(bits).digest('hex');
+}
 
 function getHammingDistance(s1, s2) {
     let d = 0;
@@ -164,12 +197,13 @@ function getHammingDistance(s1, s2) {
 function extraireSignatureViaPython(imageBuffer) {
     return new Promise((resolve, reject) => {
         const tempFilePath = path.join(__dirname, `temp_verification_${Date.now()}.png`);
+        const scriptPython = path.join(__dirname, 'analyser_sceau_v4.py');
         
         fs.writeFile(tempFilePath, imageBuffer, (err) => {
             if (err) return reject(new Error("Échec de création du fichier d'analyse temporaire."));
 
             // Exécution du script Python d'IA OpenCV
-            exec(`python analyser_sceau.py "${tempFilePath}"`, (pyErr, stdout, stderr) => {
+            exec(`python3 "${scriptPython}" "${tempFilePath}"`, (pyErr, stdout, stderr) => {
                 // Nettoyage sécurisé du stockage local
                 if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
 
@@ -204,9 +238,14 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
             return res.status(400).json({ success: false, message: "Aucune image de sceau fournie." });
         }
 
-        // Utilisation de la brique d'IA Python à la place de l'ancienne méthode sharp géométrique
+        // Utilisation de la brique d'IA Python
         const signatureExtraite = await extraireSignatureViaPython(req.file.buffer);
         console.log("Segments binaires reconstruits par l'IA Python :", signatureExtraite);
+
+        // Hashage de la lecture pour validation secondaire
+        const hashN = hashBits(signatureExtraite.noyau);
+        const hashT = hashBits(signatureExtraite.transition);
+        const hashP = hashBits(signatureExtraite.peripherie);
 
         const { data: produits, error } = await supabase.from('sya_produit_certifie').select('*');
 
@@ -218,7 +257,6 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
         let scoreMax = 0;
 
         produits.forEach(p => {
-            // PROTECTION : Ignore les lignes de tests antérieures qui ont des colonnes vides (null)
             if (!p.segment_noyau || !p.segment_transition || !p.segment_peripherie) {
                 return; 
             }
@@ -228,8 +266,20 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
             const dP = getHammingDistance(signatureExtraite.peripherie, p.segment_peripherie);
             
             const totalErreurs = dN + dT + dP;
-            const totalBits = 90; 
-            const score = ((totalBits - totalErreurs) / totalBits) * 100;
+            const scoreBits = ((90 - totalErreurs) / 90) * 100;
+
+            // Comparaison des hashs de segments
+            const dbHashN = hashBits(p.segment_noyau);
+            const dbHashT = hashBits(p.segment_transition);
+            const dbHashP = hashBits(p.segment_peripherie);
+
+            const scoreHash = (
+                hashN === dbHashN &&
+                hashT === dbHashT &&
+                hashP === dbHashP
+            ) ? 100 : 0;
+
+            const score = Math.max(scoreBits, scoreHash);
 
             if (score > scoreMax) {
                 scoreMax = score;

@@ -1,5 +1,6 @@
-# Dépendances
+# Ignore les node_modules à la racine ET dans le dossier backend
 node_modules/
+backend/node_modules/
 
 # Secrets et configurations locales
 .env
@@ -10,3 +11,5 @@ node_modules/
 *.DS_Store
 dist/
 build/
+# Ignore les images temporaires générées par l'IA
+backend/temp_verification_*.png
