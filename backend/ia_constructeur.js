@@ -1,56 +1,101 @@
-const crypto = require('crypto');
-const BIBLIOTHEQUE = require('./bibliotheque_formes');
+// ===================================
+// API.JS
+// COMPATIBLE SERVER.JS
+// ===================================
 
-const SEED = 3; // 🔒 verrouillage système
+function dataURLtoBlob(dataurl){
 
-function construireBibliotheque(signature) {
+    const arr = dataurl.split(',');
 
-    const anneaux = [
-        { nom: "noyau", debut: 0, taille: 20 },
-        { nom: "transition", debut: 20, taille: 30 },
-        { nom: "peripherie", debut: 50, taille: 40 }
-    ];
+    const mime =
+    arr[0].match(/:(.*?);/)[1];
 
-    const resultat = {};
+    const bstr =
+    atob(arr[1]);
 
-    anneaux.forEach(anneau => {
+    let n =
+    bstr.length;
 
-        resultat[anneau.nom] = [];
+    const u8arr =
+    new Uint8Array(n);
 
-        const segment = signature.substring(
-            anneau.debut,
-            anneau.debut + anneau.taille
-        );
+    while(n--){
 
-        for (let i = 0; i < segment.length; i++) {
+        u8arr[n] =
+        bstr.charCodeAt(n);
 
-            const bit = parseInt(segment[i]) || 0;
+    }
 
-            // Utilise 3 bits pour rendre la répartition des formes plus riche
-            const groupeBits = signature
-                .substring(anneau.debut + i, anneau.debut + i + 3)
-                .padEnd(3, '0');
-
-            // Logique de verrouillage déterministe (Standard Officiel)
-            const indexForme = (i + bit + SEED) % 8;
-
-            resultat[anneau.nom].push({
-
-                position: i,
-
-                bit: bit,
-
-                forme: BIBLIOTHEQUE[indexForme].nom,
-
-                valeur: BIBLIOTHEQUE[indexForme].valeur
-
-            });
-
-        }
-
-    });
-
-    return resultat;
+    return new Blob(
+        [u8arr],
+        { type:mime }
+    );
 }
 
-module.exports = construireBibliotheque;
+const API = {
+
+URL: "https://anor-api.onrender.com",
+
+
+async verifier(imageBase64){
+
+try{
+
+const blob =
+dataURLtoBlob(
+    imageBase64
+);
+
+
+const formData=
+
+new FormData();
+
+
+formData.append(
+
+"sceau",
+
+blob,
+
+"sceau.png"
+
+);
+
+
+const response=
+
+await fetch(
+
+`${this.URL}/api/produit/verifier`,
+
+{
+
+method:"POST",
+
+body:formData
+
+}
+
+);
+
+
+return await response.json();
+
+}
+
+catch(error){
+
+console.log(error);
+
+return{
+
+success:false
+
+};
+
+}
+
+}
+
+};

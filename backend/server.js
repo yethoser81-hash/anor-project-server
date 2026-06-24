@@ -203,7 +203,11 @@ function extraireSignatureViaPython(imageBuffer) {
             if (err) return reject(new Error("Échec de création du fichier d'analyse temporaire."));
 
             // Exécution du script Python d'IA OpenCV
-            exec(`python3 "${scriptPython}" "${tempFilePath}"`, (pyErr, stdout, stderr) => {
+            const cmd = process.platform === "win32"
+                ? `python "${scriptPython}" "${tempFilePath}"`
+                : `python3 "${scriptPython}" "${tempFilePath}"`;
+
+            exec(cmd, (pyErr, stdout, stderr) => {
                 // Nettoyage sécurisé du stockage local
                 if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
 
@@ -316,7 +320,7 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
 /* ==========================================
    6. DÉMARRAGE DU SERVEUR
 ========================================== */
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log("-------------------------------------------------");
     console.log(`[OK] ANOR Server (SYA) binaire démarré sur le port ${PORT}`);
