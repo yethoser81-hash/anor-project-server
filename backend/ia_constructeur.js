@@ -1,101 +1,77 @@
-// ===================================
-// API.JS
-// COMPATIBLE SERVER.JS
-// ===================================
+const BIBLIOTHEQUE = require('./bibliotheque_formes');
 
-function dataURLtoBlob(dataurl){
+const SEED = 3;
 
-    const arr = dataurl.split(',');
+function construireBibliotheque(signature) {
 
-    const mime =
-    arr[0].match(/:(.*?);/)[1];
-
-    const bstr =
-    atob(arr[1]);
-
-    let n =
-    bstr.length;
-
-    const u8arr =
-    new Uint8Array(n);
-
-    while(n--){
-
-        u8arr[n] =
-        bstr.charCodeAt(n);
-
+    if (!signature || signature.length < 90) {
+        throw new Error(
+            "Signature binaire invalide."
+        );
     }
 
-    return new Blob(
-        [u8arr],
-        { type:mime }
-    );
-}
+    const anneaux = [
 
-const API = {
+        {
+            nom: "noyau",
+            debut: 0,
+            taille: 20
+        },
 
-URL: "https://anor-api.onrender.com",
+        {
+            nom: "transition",
+            debut: 20,
+            taille: 30
+        },
 
+        {
+            nom: "peripherie",
+            debut: 50,
+            taille: 40
+        }
 
-async verifier(imageBase64){
+    ];
 
-try{
+    const resultat = {};
 
-const blob =
-dataURLtoBlob(
-    imageBase64
-);
+    anneaux.forEach(anneau => {
 
+        resultat[anneau.nom] = [];
 
-const formData=
+        const segment = signature.substring(
+            anneau.debut,
+            anneau.debut + anneau.taille
+        );
 
-new FormData();
+        for (let i = 0; i < segment.length; i++) {
 
+            const bit =
+                parseInt(segment[i], 10) || 0;
 
-formData.append(
+            const indexForme =
+                (i + bit + SEED) %
+                BIBLIOTHEQUE.length;
 
-"sceau",
+            resultat[anneau.nom].push({
 
-blob,
+                position: i,
 
-"sceau.png"
+                bit,
 
-);
+                forme:
+                    BIBLIOTHEQUE[indexForme].nom,
 
+                valeur:
+                    BIBLIOTHEQUE[indexForme].valeur
 
-const response=
+            });
 
-await fetch(
+        }
 
-`${this.URL}/api/produit/verifier`,
+    });
 
-{
-
-method:"POST",
-
-body:formData
-
-}
-
-);
-
-
-return await response.json();
-
-}
-
-catch(error){
-
-console.log(error);
-
-return{
-
-success:false
-
-};
+    return resultat;
 
 }
 
-}
-
-};
+module.exports = construireBibliotheque;
