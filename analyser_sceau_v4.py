@@ -34,12 +34,8 @@ def extraire_signature_ia(image_path):
 
         img = cv2.resize(img, (1000, 1000), interpolation=cv2.INTER_CUBIC)
 
-        thresh = cv2.adaptiveThreshold(
-            img, 255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY_INV,
-            11, 2
-        )
+        # MODIFICATION : Remplacement du seuil adaptatif par Otsu pour une meilleure robustesse physique
+        _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 

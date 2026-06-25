@@ -33,10 +33,20 @@ function genererVecteurs(data, secret, index) {
     };
 
     return {
-        noyau: extraireSequence(20, 0),      // 20 bits
+        noyau: extraireSequence(20, 0),       // 20 bits
         transition: extraireSequence(30, 20), // 30 bits
         peripherie: extraireSequence(40, 50)  // 40 bits
     };
+}
+
+/**
+ * [AJOUT] Helper pour synchronisation front-end : 
+ * Garantit que la forme géométrique correspond au bit lu et au SEED.
+ */
+function getFormeParBit(index, bit) {
+    const SEED = 3;
+    const bibliotheque = ["cercle", "carre", "rectangle", "triangle", "losange", "croix", "demi_cercle", "barre_verticale"];
+    return bibliotheque[(index + parseInt(bit) + SEED) % 8];
 }
 
 /**
@@ -53,4 +63,4 @@ function creerSceau(data, secret, index) {
     };
 }
 
-module.exports = { creerSceau };
+module.exports = { creerSceau, getFormeParBit };
