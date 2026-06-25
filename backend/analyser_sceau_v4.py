@@ -56,9 +56,9 @@ def extraire_signature_ia(image_path):
             cX, cY = 500, 500
 
         config_rayons = [
-            {"key": "noyau", "rayon": 260, "count": 20},
-            {"key": "transition", "rayon": 360, "count": 30},
-            {"key": "peripherie", "rayon": 440, "count": 40}
+            {"key": "noyau", "rayon": 250, "count": 20, "decalage": 0},
+            {"key": "transition", "rayon": 320, "count": 30, "decalage": 0.05},
+            {"key": "peripherie", "rayon": 390, "count": 40, "decalage": 0.1}
         ]
 
         segments = {}
@@ -72,7 +72,8 @@ def extraire_signature_ia(image_path):
             formes = []
 
             for i in range(config["count"]):
-                angle = (i / config["count"]) * np.pi * 2
+                # Application du decalage dans le calcul de l'angle
+                angle = ((i / config["count"]) * np.pi * 2) + config["decalage"]
 
                 x = int(cX + np.cos(angle) * config["rayon"])
                 y = int(cY + np.sin(angle) * config["rayon"])
@@ -81,7 +82,7 @@ def extraire_signature_ia(image_path):
                 y = max(0, min(999, y))
 
                 zone = thresh[max(0, y-1):min(1000, y+2),
-                              max(0, x-1):min(1000, x+2)]
+                            max(0, x-1):min(1000, x+2)]
 
                 val = np.mean(zone)
 
