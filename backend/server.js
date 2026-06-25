@@ -291,8 +291,8 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
             }
         });
 
-        // Seuil de confiance fixé à 85% pour tolérer les dommages physiques sur les étiquettes
-        if (meilleurMatch && scoreMax >= 85) {
+        // Seuil de confiance abaissé à 70% pour tolérer les dommages physiques/variations sur les étiquettes
+        if (meilleurMatch && scoreMax >= 70) {
             return res.json({
                 success: true,
                 produit: meilleurMatch,
