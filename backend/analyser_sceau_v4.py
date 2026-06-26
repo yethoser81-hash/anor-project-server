@@ -32,10 +32,15 @@ def extraire_signature_ia(image_path):
         if img is None:
             return {"success": False, "message": "Impossible de lire l'image."}
 
-        img = cv2.resize(img, (1000, 1000), interpolation=cv2.INTER_CUBIC)
+        # Cinquième correction : redimensionnement haute précision
+        TARGET_SIZE = 1400
+        img = cv2.resize(img, (TARGET_SIZE, TARGET_SIZE), interpolation=cv2.INTER_LANCZOS4)
 
-        # MODIFICATION : Remplacement du seuil adaptatif par Otsu pour une meilleure robustesse physique
+        # Sixième correction : ajout du nettoyage morphologique
         _, thresh = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        kernel = np.ones((3,3), np.uint8)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
 
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -49,12 +54,12 @@ def extraire_signature_ia(image_path):
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
         else:
-            cX, cY = 500, 500
+            cX, cY = TARGET_SIZE // 2, TARGET_SIZE // 2
 
         config_rayons = [
-            {"key": "noyau", "rayon": 250, "count": 20, "decalage": 0},
-            {"key": "transition", "rayon": 320, "count": 30, "decalage": 0.05},
-            {"key": "peripherie", "rayon": 390, "count": 40, "decalage": 0.1}
+            {"key": "noyau", "rayon": 350, "count": 20, "decalage": 0},
+            {"key": "transition", "rayon": 450, "count": 30, "decalage": 0.05},
+            {"key": "peripherie", "rayon": 550, "count": 40, "decalage": 0.1}
         ]
 
         segments = {}
@@ -68,21 +73,23 @@ def extraire_signature_ia(image_path):
             formes = []
 
             for i in range(config["count"]):
-                # Application du decalage dans le calcul de l'angle
                 angle = ((i / config["count"]) * np.pi * 2) + config["decalage"]
 
                 x = int(cX + np.cos(angle) * config["rayon"])
                 y = int(cY + np.sin(angle) * config["rayon"])
 
-                x = max(0, min(999, x))
-                y = max(0, min(999, y))
+                x = max(0, min(TARGET_SIZE - 1, x))
+                y = max(0, min(TARGET_SIZE - 1, y))
 
-                zone = thresh[max(0, y-1):min(1000, y+2),
-                            max(0, x-1):min(1000, x+2)]
+                # Troisième correction : zone de lecture 13x13 pour la robustesse
+                zone = thresh[
+                    max(0, y-6):min(TARGET_SIZE, y+7),
+                    max(0, x-6):min(TARGET_SIZE, x+7)
+                ]
 
-                val = np.mean(zone)
-
-                bit = 1 if val > 127 else 0
+                # Quatrième correction : mesure de densité de pixels
+                val = np.count_nonzero(zone) / zone.size
+                bit = 1 if val > 0.45 else 0
                 bits.append(str(bit))
 
                 # =========================
