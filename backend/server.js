@@ -75,9 +75,10 @@ app.post('/api/produit/enregistrer', upload.fields([
     { name: 'visuel' }
 ]), async (req, res) => {
     try {
+        // Extraction des données (on récupère 'composition' envoyé par l'index.html)
         const {
             nom_produit, nom_producteur, lot, pays_origine,
-            type_emballage, caracteristiques, date_fabrication,
+            type_emballage, composition, date_fabrication,
             date_peremption, date_certificat_conformite
         } = req.body;
 
@@ -124,7 +125,8 @@ app.post('/api/produit/enregistrer', upload.fields([
             pays_origine,
             visuel_url: 'p_default.png',
             type_emballage: type_emballage || "Non spécifié",
-            caracteristiques: caracteristiques || "Non spécifié",
+            // Mapping de 'composition' (front) vers 'caracteristiques' (base de données)
+            caracteristiques: composition || "Non spécifié",
 
             date_fabrication: cleanDate(date_fabrication),
             date_peremption: cleanDate(date_peremption),
