@@ -1,5 +1,5 @@
 /**
- * forgeRenderer.js - Moteur de Forge ANOR (Version Sérialisée enrichie)
+ * forgeRenderer.js - Moteur de Forge ANOR (Version Sérialisée Complète)
  */
 
 const ANOR_COLORS = ["#336699", "#2B547E", "#1F456E"];
@@ -12,24 +12,38 @@ function getCtx(canvasId) {
     return ctx;
 }
 
-// Fonction utilitaire pour dessiner les formes complexes
+// Moteur de dessin des formes de la bibliothèque
 function dessinerForme(ctx, typeForme, x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.lineWidth = 4;
     ctx.beginPath();
+    
     switch(typeForme) {
-        case "cercle": ctx.arc(x, y, 10, 0, Math.PI * 2); break;
-        case "carre": ctx.rect(x-10, y-10, 20, 20); break;
-        case "triangle": ctx.moveTo(x, y-10); ctx.lineTo(x-10, y+10); ctx.lineTo(x+10, y+10); break;
-        case "losange": ctx.moveTo(x, y-12); ctx.lineTo(x+12, y); ctx.lineTo(x, y+12); ctx.lineTo(x-12, y); break;
-        case "croix": ctx.moveTo(x-10, y); ctx.lineTo(x+10, y); ctx.moveTo(x, y-10); ctx.lineTo(x, y+10); break;
-        default: ctx.arc(x, y, 5, 0, Math.PI * 2); // Forme par défaut (point)
+        case "cercle": ctx.arc(0, 0, 10, 0, Math.PI * 2); break;
+        case "carre": ctx.rect(-10, -10, 20, 20); break;
+        case "triangle": ctx.moveTo(0, -12); ctx.lineTo(-12, 10); ctx.lineTo(12, 10); ctx.closePath(); break;
+        case "losange": ctx.moveTo(0, -15); ctx.lineTo(15, 0); ctx.lineTo(0, 15); ctx.lineTo(-15, 0); ctx.closePath(); break;
+        case "croix": ctx.moveTo(-10, 0); ctx.lineTo(10, 0); ctx.moveTo(0, -10); ctx.lineTo(0, 10); break;
+        case "etoile_cinq_branches": 
+            for(let i=0; i<5; i++) {
+                ctx.lineTo(Math.cos((18+i*72)*Math.PI/180)*15, Math.sin((18+i*72)*Math.PI/180)*15);
+                ctx.lineTo(Math.cos((54+i*72)*Math.PI/180)*7, Math.sin((54+i*72)*Math.PI/180)*7);
+            } break;
+        default: ctx.arc(0, 0, 5, 0, Math.PI * 2); // Point par défaut
     }
     ctx.stroke();
+    ctx.restore();
 }
 
 function dessinerSceauGeneratif(signature, bibliotheque, timestamp) {
     const ctx = getCtx("sceauCanvas");
     ctx.clearRect(0, 0, 1000, 1000);
     
+    // Chargement du logo central (situé à côté de ce fichier)
+    const logo = new Image();
+    logo.src = 'logo_anor.png'; // Assurez-vous que ce fichier est dans /public/
+
     const seedString = signature + timestamp;
     let hash = 0;
     for (let i = 0; i < seedString.length; i++) {
@@ -53,25 +67,23 @@ function dessinerSceauGeneratif(signature, bibliotheque, timestamp) {
     ctx.lineWidth = 2;
     for (let i = 0; i < 4; i++) {
         ctx.beginPath();
-        for (let a = 0; a < Math.PI * 2; a += 0.01) {
+        for (let a = 0; a < Math.PI * 2; a += 0.05) {
             const r = 350 + Math.sin(a * (seed % 10 + i * 5)) * 50;
             ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
         }
         ctx.closePath(); ctx.stroke();
     }
 
-    // 3. Marques de sérialisation basées sur la BIBLIOTHEQUE
-    // On fusionne les anneaux pour le rendu visuel
+    // 3. Marques de sérialisation (formes réelles de la bibliothèque)
     const formesAffichees = [
         ...(bibliotheque.noyau || []),
         ...(bibliotheque.transition || []),
         ...(bibliotheque.peripherie || [])
     ];
 
-    ctx.lineWidth = 3;
     formesAffichees.forEach((item, index) => {
-        if (index >= 30) return; // Limite le nombre de formes sur le sceau
-        const angle = (index / 30) * Math.PI * 2;
+        if (index >= 40) return; 
+        const angle = (index / 40) * Math.PI * 2;
         const x = Math.cos(angle) * 400;
         const y = Math.sin(angle) * 400;
         
@@ -79,13 +91,10 @@ function dessinerSceauGeneratif(signature, bibliotheque, timestamp) {
         dessinerForme(ctx, item.forme, x, y);
     });
 
-    // 4. Logo central
-    ctx.fillStyle = "#FFFFFF";
-    ctx.beginPath(); ctx.arc(0, 0, 200, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = ANOR_COLORS[0];
-    ctx.font = "bold 60px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText("ANOR", 0, 20);
+    // 4. Logo central (appelé ici)
+    logo.onload = () => {
+        ctx.drawImage(logo, -150, -150, 300, 300);
+    };
     
     ctx.restore();
 }
