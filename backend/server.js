@@ -79,7 +79,7 @@ app.post('/api/produit/enregistrer', upload.fields([
         const {
             nom_produit, nom_producteur, lot, pays_origine,
             type_emballage, composition, date_fabrication,
-            date_peremption, date_certificat_conformite
+            date_peremption, date_certificat_conformite, timestamp
         } = req.body;
 
         if (!nom_produit || !nom_producteur || !lot || !pays_origine) {
@@ -97,8 +97,8 @@ app.post('/api/produit/enregistrer', upload.fields([
             return res.status(409).json({ success: false, message: "Ce lot de produit est déjà enregistré." });
         }
 
-        // SIGNATURE
-        const salt = Date.now().toString();
+        // SIGNATURE (Utilisation du timestamp reçu pour garantir l'unicité)
+        const salt = timestamp || Date.now().toString();
 
         const hmacBuffer = crypto
             .createHmac('sha256', ANOR_SECRET)

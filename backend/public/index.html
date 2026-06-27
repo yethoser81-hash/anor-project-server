@@ -230,6 +230,9 @@ document.getElementById('file_visuel')
 document.getElementById('forgeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    // Génération du timestamp pour garantir l'unicité à chaque génération
+    const timestamp = Date.now().toString();
+
     const formData = new FormData();
     formData.append('nom_produit', document.getElementById('nom_produit').value);
     formData.append('nom_producteur', document.getElementById('nom_producteur').value);
@@ -240,8 +243,8 @@ document.getElementById('forgeForm').addEventListener('submit', async (e) => {
     formData.append('norme', document.getElementById('norme').value);
     formData.append('type_emballage', document.getElementById('type_emballage').value);
     formData.append('pays_origine', document.getElementById('pays_origine').value);
+    formData.append('timestamp', timestamp); // Ajout du timestamp pour le serveur
     
-    // Ajout des champs conditionnels au formData
     const pays = document.getElementById('pays_origine').value.toLowerCase().trim();
     if (pays === 'cameroun') {
         formData.append('date_certificat_conformite', document.getElementById('date_certificat_conformite').value);
@@ -270,7 +273,8 @@ document.getElementById('forgeForm').addEventListener('submit', async (e) => {
         document.getElementById('sig_debug').innerText =
             "Signature: " + result.code_sceau.substring(0, 32);
 
-        window.dessinerSceauPremium(result.code_sceau, result.bibliotheque);
+        // Appel du moteur de rendu avec le timestamp pour garantir l'unicité visuelle
+        window.dessinerSceauPremium(result.code_sceau, result.bibliotheque, timestamp);
 
     } catch (err) {
         alert("Erreur lors de l'enregistrement du lot.");

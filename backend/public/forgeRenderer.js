@@ -1,52 +1,93 @@
-async function dessinerSceauPremium(signature, bibliotheque) {
-    const canvas = document.getElementById('sceauCanvas');
-    const ctx = canvas.getContext('2d');
+/**
+ * forgeRenderer.js - Moteur de Forge ANOR (Version Sérialisée enrichie)
+ */
+
+const ANOR_COLORS = ["#336699", "#2B547E", "#1F456E"];
+
+function getCtx(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext("2d");
+    canvas.width = 1000;
+    canvas.height = 1000;
+    return ctx;
+}
+
+// Fonction utilitaire pour dessiner les formes complexes
+function dessinerForme(ctx, typeForme, x, y) {
+    ctx.beginPath();
+    switch(typeForme) {
+        case "cercle": ctx.arc(x, y, 10, 0, Math.PI * 2); break;
+        case "carre": ctx.rect(x-10, y-10, 20, 20); break;
+        case "triangle": ctx.moveTo(x, y-10); ctx.lineTo(x-10, y+10); ctx.lineTo(x+10, y+10); break;
+        case "losange": ctx.moveTo(x, y-12); ctx.lineTo(x+12, y); ctx.lineTo(x, y+12); ctx.lineTo(x-12, y); break;
+        case "croix": ctx.moveTo(x-10, y); ctx.lineTo(x+10, y); ctx.moveTo(x, y-10); ctx.lineTo(x, y+10); break;
+        default: ctx.arc(x, y, 5, 0, Math.PI * 2); // Forme par défaut (point)
+    }
+    ctx.stroke();
+}
+
+function dessinerSceauGeneratif(signature, bibliotheque, timestamp) {
+    const ctx = getCtx("sceauCanvas");
     ctx.clearRect(0, 0, 1000, 1000);
-    ctx.imageSmoothingEnabled = true;
+    
+    const seedString = signature + timestamp;
+    let hash = 0;
+    for (let i = 0; i < seedString.length; i++) {
+        hash = ((hash << 5) - hash) + seedString.charCodeAt(i);
+        hash |= 0;
+    }
+    const seed = Math.abs(hash);
+    const rotation = (seed % 360) * (Math.PI / 180);
 
-    // 1. Cercle de sécurité
-    ctx.strokeStyle = BLEU_ANOR;
-    ctx.lineWidth = 8;
-    ctx.beginPath(); ctx.arc(CENTRE_HD, CENTRE_HD, 480, 0, Math.PI * 2); ctx.stroke();
+    ctx.save();
+    ctx.translate(500, 500);
+    ctx.rotate(rotation);
 
-    // 2. Rendu des anneaux (Code inchangé)
-    const anneaux = [
-        { data: bibliotheque.noyau, rayon: 240, size: 14 },
-        { data: bibliotheque.transition, rayon: 330, size: 18 },
-        { data: bibliotheque.peripherie, rayon: 420, size: 22 }
+    // 1. Cercle Souverain
+    ctx.strokeStyle = ANOR_COLORS[0];
+    ctx.lineWidth = 15;
+    ctx.beginPath(); ctx.arc(0, 0, 450, 0, Math.PI * 2); ctx.stroke();
+
+    // 2. Guilloches dynamiques
+    ctx.strokeStyle = ANOR_COLORS[1];
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        for (let a = 0; a < Math.PI * 2; a += 0.01) {
+            const r = 350 + Math.sin(a * (seed % 10 + i * 5)) * 50;
+            ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+        }
+        ctx.closePath(); ctx.stroke();
+    }
+
+    // 3. Marques de sérialisation basées sur la BIBLIOTHEQUE
+    // On fusionne les anneaux pour le rendu visuel
+    const formesAffichees = [
+        ...(bibliotheque.noyau || []),
+        ...(bibliotheque.transition || []),
+        ...(bibliotheque.peripherie || [])
     ];
 
-    anneaux.forEach((anneau) => {
-        const total = anneau.data.length;
-        for(let i = 0; i < total; i++) {
-            const angle = (i / total) * Math.PI * 2;
-            const x = CENTRE_HD + Math.cos(angle) * anneau.rayon;
-            const y = CENTRE_HD + Math.sin(angle) * anneau.rayon;
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate(angle);
-            ctx.strokeStyle = BLEU_ANOR;
-            dessinerForme(ctx, anneau.data[i].forme, anneau.size);
-            ctx.restore();
-        }
+    ctx.lineWidth = 3;
+    formesAffichees.forEach((item, index) => {
+        if (index >= 30) return; // Limite le nombre de formes sur le sceau
+        const angle = (index / 30) * Math.PI * 2;
+        const x = Math.cos(angle) * 400;
+        const y = Math.sin(angle) * 400;
+        
+        ctx.strokeStyle = item.bit === 1 ? ANOR_COLORS[0] : "#AABBCF";
+        dessinerForme(ctx, item.forme, x, y);
     });
 
-    // 3. Logo central sécurisé (Fallback automatique)
-    const imgLogo = new Image();
-    imgLogo.src = 'logo_anor.png';
+    // 4. Logo central
+    ctx.fillStyle = "#FFFFFF";
+    ctx.beginPath(); ctx.arc(0, 0, 200, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = ANOR_COLORS[0];
+    ctx.font = "bold 60px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("ANOR", 0, 20);
     
-    imgLogo.onload = () => {
-        ctx.drawImage(imgLogo, CENTRE_HD - 180, CENTRE_HD - 180, 360, 360);
-    };
-
-    imgLogo.onerror = () => {
-        console.warn("Logo non trouvé, utilisation du mode texte.");
-        ctx.fillStyle = "white";
-        ctx.beginPath(); ctx.arc(CENTRE_HD, CENTRE_HD, 180, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = BLEU_ANOR;
-        ctx.font = "bold 100px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("ANOR", CENTRE_HD, CENTRE_HD);
-    };
+    ctx.restore();
 }
+
+window.dessinerSceauPremium = dessinerSceauGeneratif;
