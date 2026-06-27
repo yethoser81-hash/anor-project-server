@@ -93,6 +93,7 @@
             border: 2px solid #ccc;
             border-radius: 10px;
         }
+        .hidden { display: none; }
     </style>
 </head>
 
@@ -147,7 +148,15 @@
 
             <div class="form-group">
                 <label>PAYS D'ORIGINE</label>
-                <input type="text" id="pays_origine">
+                <input type="text" id="pays_origine" oninput="toggleFields()">
+            </div>
+
+            <div id="camerounFields" class="hidden">
+                <div class="form-group"><label>DATE CERTIFICAT CONFORMITÉ</label><input type="date" id="date_certificat_conformite"></div>
+            </div>
+            <div id="autreFields">
+                <div class="form-group"><label>DATE FABRICATION</label><input type="date" id="date_fabrication"></div>
+                <div class="form-group"><label>DATE PÉREMPTION</label><input type="date" id="date_peremption"></div>
             </div>
 
             <div class="form-group">
@@ -185,6 +194,20 @@
 
 <script>
 /* =========================
+   LOGIQUE ORIGINE/DATES
+========================= */
+function toggleFields() {
+    const pays = document.getElementById('pays_origine').value.toLowerCase().trim();
+    if (pays === 'cameroun') {
+        document.getElementById('camerounFields').classList.remove('hidden');
+        document.getElementById('autreFields').classList.add('hidden');
+    } else {
+        document.getElementById('camerounFields').classList.add('hidden');
+        document.getElementById('autreFields').classList.remove('hidden');
+    }
+}
+
+/* =========================
    PREVIEW IMAGE
 ========================= */
 function previewFile() {
@@ -207,7 +230,6 @@ document.getElementById('file_visuel')
 document.getElementById('forgeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Utilisation de FormData pour inclure le fichier PDF et le visuel
     const formData = new FormData();
     formData.append('nom_produit', document.getElementById('nom_produit').value);
     formData.append('nom_producteur', document.getElementById('nom_producteur').value);
@@ -218,6 +240,16 @@ document.getElementById('forgeForm').addEventListener('submit', async (e) => {
     formData.append('norme', document.getElementById('norme').value);
     formData.append('type_emballage', document.getElementById('type_emballage').value);
     formData.append('pays_origine', document.getElementById('pays_origine').value);
+    
+    // Ajout des champs conditionnels au formData
+    const pays = document.getElementById('pays_origine').value.toLowerCase().trim();
+    if (pays === 'cameroun') {
+        formData.append('date_certificat_conformite', document.getElementById('date_certificat_conformite').value);
+    } else {
+        formData.append('date_fabrication', document.getElementById('date_fabrication').value);
+        formData.append('date_peremption', document.getElementById('date_peremption').value);
+    }
+
     formData.append('certificat_pdf', document.getElementById('certificat_pdf').files[0]);
     formData.append('visuel', document.getElementById('file_visuel').files[0]);
 
@@ -238,7 +270,7 @@ document.getElementById('forgeForm').addEventListener('submit', async (e) => {
         document.getElementById('sig_debug').innerText =
             "Signature: " + result.code_sceau.substring(0, 32);
 
-        window.dessinerSceauPremium(result.bibliotheque);
+        window.dessinerSceauPremium(result.code_sceau, result.bibliotheque);
 
     } catch (err) {
         alert("Erreur lors de l'enregistrement du lot.");
