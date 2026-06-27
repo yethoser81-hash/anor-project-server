@@ -23,18 +23,17 @@ const verifLimiter = rateLimit({
     message: { success: false, message: "Trop de tentatives. Réessayez dans 15 min." }
 });
 
+// Configuration du stockage temporaire
 const upload = multer({
     storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
-        if (file.mimetype.startsWith('image/')) {
+        if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
             cb(null, true);
         } else {
-            cb(new Error('Format de fichier non autorisé. Images uniquement.'));
+            cb(new Error('Format de fichier non autorisé.'));
         }
     },
-    limits: { 
-        fileSize: 5 * 1024 * 1024 
-    }
+    limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 const supabase = createClient(
@@ -70,19 +69,16 @@ app.get('/api/status', (req, res) => {
 /* ==========================================
    3. FORGE (IDENTIFICATION & SIGNATURE BINAIRE)
 ========================================== */
-app.post('/api/produit/enregistrer', async (req, res) => {
+// Utilisation de upload.fields pour synchroniser avec votre FormData
+app.post('/api/produit/enregistrer', upload.fields([
+    { name: 'certificat_pdf' }, 
+    { name: 'visuel' }
+]), async (req, res) => {
     try {
         const {
-            nom_produit,
-            nom_producteur,
-            lot,
-            pays_origine,
-            visuel_url,
-            type_emballage,
-            caracteristiques,
-            date_fabrication,
-            date_peremption,
-            date_certificat_conformite
+            nom_produit, nom_producteur, lot, pays_origine,
+            type_emballage, caracteristiques, date_fabrication,
+            date_peremption, date_certificat_conformite
         } = req.body;
 
         if (!nom_produit || !nom_producteur || !lot || !pays_origine) {
@@ -126,7 +122,7 @@ app.post('/api/produit/enregistrer', async (req, res) => {
             nom_producteur,
             lot,
             pays_origine,
-            visuel_url: visuel_url || 'p_default.png',
+            visuel_url: 'p_default.png',
             type_emballage: type_emballage || "Non spécifié",
             caracteristiques: caracteristiques || "Non spécifié",
 
