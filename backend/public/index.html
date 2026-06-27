@@ -7,7 +7,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-    <!-- MOTEUR DE RENDU EXTERNE -->
     <script src="./forgeRenderer.js"></script>
 
     <style>
@@ -101,7 +100,6 @@
 
 <div class="main-wrapper">
 
-    <!-- FORMULAIRE -->
     <div class="forge-card">
         <h2>FORGE ANOR</h2>
 
@@ -118,13 +116,28 @@
             </div>
 
             <div class="form-group">
-                <label>CARACTÉRISTIQUES</label>
-                <input type="text" id="caracteristiques" required>
+                <label>COMPOSITION</label>
+                <input type="text" id="composition" required>
             </div>
 
             <div class="form-group">
                 <label>LOT</label>
                 <input type="text" id="lot" required>
+            </div>
+
+            <div class="form-group">
+                <label>QUANTITÉ</label>
+                <input type="number" id="quantite" value="1" required>
+            </div>
+
+            <div class="form-group">
+                <label>RÉFÉRENTIEL APPLICABLE</label>
+                <input type="text" id="referentiel_applicable" required>
+            </div>
+
+            <div class="form-group">
+                <label>NORME</label>
+                <input type="text" id="norme" required>
             </div>
 
             <div class="form-group">
@@ -138,7 +151,12 @@
             </div>
 
             <div class="form-group">
-                <label>VISUEL</label>
+                <label>CERTIFICAT DE CONFORMITÉ (PDF)</label>
+                <input type="file" id="certificat_pdf" accept="application/pdf">
+            </div>
+
+            <div class="form-group">
+                <label>VISUEL DU PRODUIT</label>
                 <input type="file" id="file_visuel" accept="image/*">
             </div>
 
@@ -146,7 +164,6 @@
         </form>
     </div>
 
-    <!-- PREVIEW -->
     <div class="preview-pane">
 
         <h2>PRÉVISUALISATION</h2>
@@ -190,20 +207,24 @@ document.getElementById('file_visuel')
 document.getElementById('forgeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const formData = {
-        nom_produit: nom_produit.value,
-        nom_producteur: nom_producteur.value,
-        caracteristiques: caracteristiques.value,
-        lot: lot.value,
-        type_emballage: type_emballage.value,
-        pays_origine: pays_origine.value
-    };
+    // Utilisation de FormData pour inclure le fichier PDF et le visuel
+    const formData = new FormData();
+    formData.append('nom_produit', document.getElementById('nom_produit').value);
+    formData.append('nom_producteur', document.getElementById('nom_producteur').value);
+    formData.append('composition', document.getElementById('composition').value);
+    formData.append('lot', document.getElementById('lot').value);
+    formData.append('quantite', document.getElementById('quantite').value);
+    formData.append('referentiel_applicable', document.getElementById('referentiel_applicable').value);
+    formData.append('norme', document.getElementById('norme').value);
+    formData.append('type_emballage', document.getElementById('type_emballage').value);
+    formData.append('pays_origine', document.getElementById('pays_origine').value);
+    formData.append('certificat_pdf', document.getElementById('certificat_pdf').files[0]);
+    formData.append('visuel', document.getElementById('file_visuel').files[0]);
 
     try {
         const response = await fetch('/api/produit/enregistrer', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
+            body: formData
         });
 
         const result = await response.json();
@@ -217,22 +238,21 @@ document.getElementById('forgeForm').addEventListener('submit', async (e) => {
         document.getElementById('sig_debug').innerText =
             "Signature: " + result.code_sceau.substring(0, 32);
 
-        // 🔥 UNIQUE POINT D’ENTRÉE DU MOTEUR
         window.dessinerSceauPremium(result.bibliotheque);
 
     } catch (err) {
-        alert("Erreur serveur");
+        alert("Erreur lors de l'enregistrement du lot.");
     }
 });
 
 /* =========================
-   DOWNLOAD KIT (inchangé)
+   DOWNLOAD KIT
 ========================= */
 async function telechargerKit() {
     const zip = new JSZip();
 
     const canvas = document.getElementById('sceauCanvas');
-    const nom = nom_produit.value.replace(/\s+/g, '_');
+    const nom = document.getElementById('nom_produit').value.replace(/\s+/g, '_');
 
     zip.file(`${nom}_sceau.png`,
         canvas.toDataURL().split(',')[1],
