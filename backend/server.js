@@ -125,8 +125,8 @@ app.post('/api/produit/enregistrer', upload.fields([
             pays_origine,
             visuel_url: 'p_default.png',
             type_emballage: type_emballage || "Non spécifié",
-            // Mapping de 'composition' (front) vers 'caracteristiques' (base de données)
-            caracteristiques: composition || "Non spécifié",
+            // Mapping de 'composition' (front) vers 'composition' (base de données)
+            composition: composition || "Non spécifié",
 
             date_fabrication: cleanDate(date_fabrication),
             date_peremption: cleanDate(date_peremption),
