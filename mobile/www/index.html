@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ANOR - Système de Vérification</title>
+    <style>
+        :root { --green: #008751; --red: #ce1126; --yellow: #fcd116; --white: #ffffff; }
+        body { background-color: #ffffff; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
+        #app-container { width: 100%; max-width: 410px; height: 95vh; background: var(--white); position: relative; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-radius: 30px; border: 1px solid #eee; }
+        
+        /* HEADER DESIGN */
+        .national-stripe { display: flex; height: 35px; position: relative; }
+        .stripe-green { background: var(--green); flex: 1; }
+        .stripe-red { background: var(--red); flex: 1; display: flex; justify-content: center; align-items: center; color: var(--yellow); font-size: 18px; }
+        .stripe-yellow { background: var(--yellow); flex: 1; }
+        
+        .status-dot { position: absolute; right: 10px; top: 45px; font-size: 9px; font-weight: bold; display: flex; align-items: center; gap: 5px; color: var(--green); z-index: 10; }
+        .dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 5px var(--green); }
+
+        .header-unit { padding: 8px 0; text-align: center; }
+        .header-band { background: var(--green); color: white; text-align: center; padding: 10px 0; width: 100%; margin: 5px 0; }
+        
+        /* AJOUTS CSS SPECIFIQUES */
+        .camera-icon { font-size: 50px; }
+        #placeholder-ui { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: rgba(0,0,0,.35); z-index: 10; pointer-events: none; }
+        .anor-logo-top { height: 70px; margin: 0 auto; display: block; }
+        .header-band h1 { margin: 0; font-size: 16px; letter-spacing: 1px; }
+        .ad-banner { animation: respire 2s infinite; }
+        @keyframes respire { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
+        #app-body { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 10px 15px; justify-content: space-around; }
+        .screen { width: 100%; display: flex; flex-direction: column; align-items: center; }
+        .hidden { display: none !important; }
+
+        /* CAMERA */
+        .vision-wrapper { width: 240px; height: 240px; border-radius: 50%; border: 4px solid var(--green); overflow: hidden; position: relative; background: #000; cursor: pointer; box-shadow: 0 10px 20px rgba(0,135,81,0.2); }
+        .vision-wrapper::before{
+            content:"";
+            position:absolute;
+            inset:10px;
+            border:2px dashed rgba(0,255,136,.5);
+            border-radius:50%;
+            animation:rotationRadar 8s linear infinite;
+            z-index:5;
+        }
+        #webcam-view { width: 100%; height: 100%; object-fit: cover; }
+        .scan-bar{
+            position:absolute;
+            width:100%;
+            height:5px;
+            background:#00ff88;
+            box-shadow:
+            0 0 10px #00ff88,
+            0 0 20px #00ff88,
+            0 0 40px #00ff88;
+            z-index:6;
+            animation:scanMove 1.5s infinite linear;
+        }
+        @keyframes scanMove { 0%, 100% { top: 5%; } 50% { top: 95%; } }
+        @keyframes rotationRadar{
+            from{
+            transform:rotate(0deg);
+            }
+            to{
+            transform:rotate(360deg);
+            }
+        }
+
+        /* RÉSULTAT */
+        .info-table { width: 100%; font-size: 10.5px; border-spacing: 0; margin-top: 5px; }
+        .info-table td { padding: 6px 0; border-bottom: 1px solid #f5f5f5; }
+        .label { color: #888; text-align: left; font-weight: 500; text-transform: uppercase; font-size: 9px; }
+        .value { text-align: right; font-weight: 700; color: #222; }
+        .cert-badge { background: #e8f5e9; color: var(--green); padding: 4px 8px; border-radius: 4px; font-size: 9px; margin-bottom: 5px; }
+        .btn-group { display: flex; gap: 10px; width: 100%; margin-top: 12px; }
+        .btn-action { flex: 1; padding: 12px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; font-size: 13px; }
+
+        /* FOOTER */
+        .anor-message-container { position: relative; background: var(--green); color: white; height: 28px; display: flex; align-items: center; overflow: hidden; }
+        .info-badge { position: absolute; left: 0; top: 0; background: var(--yellow); color: var(--green); font-size: 8px; font-weight: 900; padding: 2px 6px; z-index: 5; }
+        .footer-ad-container { padding: 10px; background: #f8f9fa; }
+        .ad-banner { background: white; border-radius: 12px; height: 42px; display: flex; align-items: center; justify-content: center; border-left: 5px solid var(--yellow); font-size: 10px; font-weight: 700; color: var(--green); text-align: center; }
+        .copyright { font-size: 8px; color: #bbb; text-align: center; padding: 5px 0 12px 0; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div class="status-dot" id="network-status"><div class="dot"></div>EN LIGNE</div>
+    <div class="national-stripe"><div class="stripe-green"></div><div class="stripe-red">★</div><div class="stripe-yellow"></div></div>
+
+    <header class="header-unit">
+        <img src="assets/logo_anor.png" alt="ANOR" class="anor-logo-top">
+        <div class="header-band"><h1>CONFORMITY CHECK / VÉRIFICATION</h1></div>
+    </header>
+
+    <main id="app-body">
+        <div id="screen-home" class="screen">
+            <div class="vision-wrapper" onclick="demarrerAnalyse()">
+                <div id="particle-container"></div>
+                <div id="laser-line" class="scan-bar hidden"></div>
+                <video id="webcam-view" autoplay playsinline></video>
+                <div id="placeholder-ui">
+                    <span class="camera-icon">📸</span>
+                    <p style="font-size:10px; color:#fff; font-weight:800; margin-top:10px;">TOUCHER POUR ANALYSER LE SCEAU</p>
+                </div>
+            </div>
+            <div id="status-msg" style="text-align:center; margin-top:15px; font-size:14px; font-weight:700; color:var(--green);">Pointez le sceau ANOR</div>
+        </div>
+
+        <div id="screen-result" class="screen hidden">
+            <img id="res-visual" src="assets/p_default.png" style="width:120px; height:120px; object-fit:contain; border-radius:15px; border: 2px solid #eee; margin-bottom:10px; background:#fff;">
+            <div class="cert-badge">✓ PRODUIT CERTIFIÉ CONFORME</div>
+            <table class="info-table">
+                <tr><td class="label">Produit</td><td id="res-name" class="value">---</td></tr>
+                <tr><td class="label">Producteur</td><td id="res-company" class="value">---</td></tr>
+                <tr><td class="label">N° Lot</td><td id="res-batch" class="value">---</td></tr>
+                <tr><td class="label">Production</td><td id="res-prod" class="value">---</td></tr>
+                <tr><td class="label">Péremption</td><td id="res-exp" class="value">---</td></tr>
+                <tr><td class="label">Norme</td><td id="res-norme" class="value">---</td></tr>
+            </table>
+            <div class="btn-group">
+                <button class="btn-action" style="background:var(--green);" onclick="location.reload()">NOUVEAU SCAN</button>
+            </div>
+        </div>
+
+        <div id="screen-report" class="screen hidden">
+            <span style="font-size:40px;">⚠️</span>
+            <h2 style="color:var(--red); font-size:18px; margin:10px 0;">CONTREFAÇON DÉTECTÉE</h2>
+            <div class="btn-group" style="flex-direction:column; width:90%;">
+                <button class="btn-action" style="background:#34B7F1;" onclick="window.location.href='tel:1502'">📞 SIGNALER AU 1502</button>
+                <button onclick="location.reload()" style="background:none; border:none; color:#999; text-decoration:underline; font-size:11px; margin-top:15px;">RETOUR</button>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer-fixed">
+        <div class="anor-message-container"><div class="info-badge">INFOS</div><marquee scrollamount="4" style="font-size:10px; width:100%;">Vérifiez systématiquement le label de conformité ANOR.</marquee></div>
+        <div class="footer-ad-container"><div class="ad-banner">Soutenez l'industrie locale : Consommez certifié !</div></div>
+        <p class="copyright">© 2026 ANOR | Solution développée par YEMGA & FILS</p>
+    </footer>
+</div>
+
+<script src="camera_ai.js"></script>
+<script src="image_ai.js"></script>
+<script src="sceau_ai.js"></script>
+<script src="api.js"></script>
+<script src="overlay_ra.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
