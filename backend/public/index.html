@@ -230,8 +230,9 @@ document.getElementById('file_visuel')
 document.getElementById('forgeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Génération du timestamp pour garantir l'unicité à chaque génération
-    const timestamp = Date.now().toString();
+    const nonce = crypto.randomUUID
+        ? crypto.randomUUID()
+        : Date.now().toString() + Math.random().toString(36).substring(2);
 
     const formData = new FormData();
     formData.append('nom_produit', document.getElementById('nom_produit').value);
@@ -243,7 +244,7 @@ document.getElementById('forgeForm').addEventListener('submit', async (e) => {
     formData.append('norme', document.getElementById('norme').value);
     formData.append('type_emballage', document.getElementById('type_emballage').value);
     formData.append('pays_origine', document.getElementById('pays_origine').value);
-    formData.append('timestamp', timestamp); // Ajout du timestamp pour le serveur
+    formData.append("nonce", nonce);
     
     const pays = document.getElementById('pays_origine').value.toLowerCase().trim();
     if (pays === 'cameroun') {
@@ -273,8 +274,7 @@ document.getElementById('forgeForm').addEventListener('submit', async (e) => {
         document.getElementById('sig_debug').innerText =
             "Signature: " + result.code_sceau.substring(0, 32);
 
-        // Appel du moteur de rendu avec le timestamp pour garantir l'unicité visuelle
-        window.dessinerSceauPremium(result.code_sceau, result.bibliotheque, timestamp);
+        window.dessinerSceauPremium(result.bibliotheque);
 
     } catch (err) {
         alert("Erreur lors de l'enregistrement du lot.");

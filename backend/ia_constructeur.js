@@ -1,76 +1,118 @@
-const BIBLIOTHEQUE = require('./bibliotheque_formes');
+/**
+ * ============================================================
+ * ia_constructeur.js
+ * IA CONSTRUCTEUR ANOR V2
+ * Transforme la signature binaire en bibliothèque graphique.
+ * ============================================================
+ */
 
-const SEED = 3;
+const BIBLIOTHEQUE = require("./bibliotheque_formes");
+
+function bitsToInt(bits) {
+    return parseInt(bits, 2);
+}
+
+function construireAnneau(signature, debut, longueur, rayonBase) {
+
+    const liste = [];
+
+    for (let i = 0; i < longueur; i++) {
+
+        const p = debut + i;
+
+        const bloc = (
+            signature +
+            signature +
+            signature
+        ).substring(p, p + 8);
+
+        const valeur = bitsToInt(bloc);
+
+        const forme =
+            BIBLIOTHEQUE[
+                valeur % BIBLIOTHEQUE.length
+            ];
+
+        liste.push({
+
+            id: i,
+
+            bit: signature[p],
+
+            forme: forme.nom,
+
+            valeur: forme.valeur,
+
+            taille:
+                8 +
+                (valeur % 18),
+
+            rotation:
+                valeur % 360,
+
+            epaisseur:
+                1 +
+                (valeur % 3),
+
+            plein:
+                (valeur & 1) === 1,
+
+            rayon:
+                rayonBase +
+                ((valeur >> 2) % 18) - 9,
+
+            offset:
+                ((valeur >> 5) % 9) - 4,
+
+            couleur:
+                valeur % 3,
+
+            miroir:
+                (valeur & 8) !== 0
+
+        });
+
+    }
+
+    return liste;
+
+}
 
 function construireBibliotheque(signature) {
 
-    if (!signature || signature.length < 90) {
-        throw new Error(
-            "Signature binaire invalide."
-        );
-    }
+    if (!signature)
+        throw new Error("Signature absente.");
 
-    const anneaux = [
+    if (signature.length !== 90)
+        throw new Error("Signature invalide.");
 
-        {
-            nom: "noyau",
-            debut: 0,
-            taille: 20
-        },
+    return {
 
-        {
-            nom: "transition",
-            debut: 20,
-            taille: 30
-        },
+        noyau:
+            construireAnneau(
+                signature,
+                0,
+                20,
+                230
+            ),
 
-        {
-            nom: "peripherie",
-            debut: 50,
-            taille: 40
-        }
+        transition:
+            construireAnneau(
+                signature,
+                20,
+                30,
+                325
+            ),
 
-    ];
+        peripherie:
+            construireAnneau(
+                signature,
+                50,
+                40,
+                430
+            )
 
-    const resultat = {};
-
-    anneaux.forEach(anneau => {
-
-        resultat[anneau.nom] = [];
-
-        const segment = signature.substring(
-            anneau.debut,
-            anneau.debut + anneau.taille
-        );
-
-        for (let i = 0; i < segment.length; i++) {
-
-            const bit =
-                parseInt(segment[i], 10) || 0;
-
-            const indexForme =
-                (i + bit + SEED) %
-                BIBLIOTHEQUE.length;
-
-            resultat[anneau.nom].push({
-
-                position: i,
-
-                bit,
-
-                forme:
-                    BIBLIOTHEQUE[indexForme].nom,
-
-                valeur:
-                    BIBLIOTHEQUE[indexForme].valeur
-
-            });
-
-        }
-
-    });
-
-    return resultat;
+    };
 
 }
 

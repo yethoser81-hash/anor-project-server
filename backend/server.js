@@ -23,7 +23,6 @@ const verifLimiter = rateLimit({
     message: { success: false, message: "Trop de tentatives. Réessayez dans 15 min." }
 });
 
-// Configuration du stockage temporaire
 const upload = multer({
     storage: multer.memoryStorage(),
     fileFilter: (req, file, cb) => {
@@ -69,78 +68,95 @@ app.get('/api/status', (req, res) => {
 /* ==========================================
    3. FORGE (IDENTIFICATION & SIGNATURE BINAIRE)
 ========================================== */
-// Utilisation de upload.fields pour synchroniser avec votre FormData
 app.post('/api/produit/enregistrer', upload.fields([
     { name: 'certificat_pdf' }, 
     { name: 'visuel' }
 ]), async (req, res) => {
     try {
-        // Extraction des données (on récupère 'composition' envoyé par l'index.html)
         const {
             nom_produit, nom_producteur, lot, pays_origine,
             type_emballage, composition, date_fabrication,
-            date_peremption, date_certificat_conformite, timestamp
+            date_peremption, date_certificat_conformite, nonce
         } = req.body;
+
+        // Point 3 : Utilisation du nonce
+        const salt = nonce;
+        if (!salt) {
+            return res.status(400).json({ success: false, message: "Nonce manquant" });
+        }
 
         if (!nom_produit || !nom_producteur || !lot || !pays_origine) {
             return res.status(400).json({ success: false, message: "Champs requis manquants." });
         }
 
+        // Point 4 : Correction contrôle doublons
         const { data: existing } = await supabase
             .from('sya_produit_certifie')
             .select('id')
-            .eq('nom_produit', nom_produit)
-            .eq('lot', lot)
+            .eq("nom_producteur", nom_producteur)
+            .eq("nom_produit", nom_produit)
+            .eq("lot", lot)
             .single();
 
         if (existing) {
             return res.status(409).json({ success: false, message: "Ce lot de produit est déjà enregistré." });
         }
 
-        // SIGNATURE (Utilisation du timestamp reçu pour garantir l'unicité)
-        const salt = timestamp || Date.now().toString();
+        // Point 2 : Signature étendue
+        const donneesSignature = [
+            nom_produit, nom_producteur, lot, pays_origine,
+            type_emballage || "", composition || "",
+            date_fabrication || "", date_peremption || "",
+            date_certificat_conformite || "", salt
+        ].join("|");
 
-        const hmacBuffer = crypto
-            .createHmac('sha256', ANOR_SECRET)
-            .update(`${nom_produit}-${nom_producteur}-${lot}-${salt}`)
-            .digest();
+        const hmacBuffer = crypto.createHmac("sha256", ANOR_SECRET).update(donneesSignature).digest();
 
         let signatureBinaire = "";
         for (const byte of hmacBuffer) {
             signatureBinaire += byte.toString(2).padStart(8, '0');
         }
-
-        // Coupe à 90 bits pour une cohérence parfaite
         signatureBinaire = signatureBinaire.substring(0, 90);
 
-        // IA BIBLIOTHÈQUE (SOURCE UNIQUE DE VÉRITÉ)
+        // Point 9 : Vérification bibliothèque
         const bibliotheque = enrichirBibliotheque(signatureBinaire);
+        if(!bibliotheque){
+            throw new Error("Bibliothèque IA invalide.");
+        }
+
+        // Point 11 : ID unique
+        const sealId = crypto.createHash("sha256").update(signatureBinaire).digest("hex");
 
         const cleanDate = (d) => (d && d.trim() !== "" ? d : null);
 
+        // Point 10 : Sauvegarde nonce + seal_id
         const produitData = {
             nom_produit,
             nom_producteur,
             lot,
+            nonce: salt,
+            sceau_id: sealId,
             pays_origine,
             visuel_url: 'p_default.png',
             type_emballage: type_emballage || "Non spécifié",
-            // Mapping de 'composition' (front) vers 'composition' (base de données)
             composition: composition || "Non spécifié",
-
             date_fabrication: cleanDate(date_fabrication),
             date_peremption: cleanDate(date_peremption),
             date_certificat_conformite: cleanDate(date_certificat_conformite),
-
             code_sceau: signatureBinaire,
-
             segment_noyau: signatureBinaire.substring(0, 20),
             segment_transition: signatureBinaire.substring(20, 50),
             segment_peripherie: signatureBinaire.substring(50, 90),
-
-            // IMPORTANT : version exploitable par APK + IA
             bibliotheque_formes: JSON.stringify(bibliotheque)
         };
+
+        // Point 12 : Journalisation
+        console.log("========== FORGE ==========");
+        console.log("Produit :", nom_produit);
+        console.log("Lot :", lot);
+        console.log("Nonce :", salt);
+        console.log("Signature :", signatureBinaire);
+        console.log("===========================");
 
         const { error } = await supabase
             .from('sya_produit_certifie')
@@ -152,36 +168,27 @@ app.post('/api/produit/enregistrer', upload.fields([
             success: true,
             message: "Produit enregistré avec succès.",
             code_sceau: signatureBinaire,
-
             structure_sceau: {
                 noyau: produitData.segment_noyau,
                 transition: produitData.segment_transition,
                 peripherie: produitData.segment_peripherie
             },
-
-            // 🔥 IMPORTANT : on expose la bibliothèque au front
             bibliotheque
         });
 
     } catch (err) {
         console.error("❌ ERREUR FORGE COMPLET :", err);
-
         return res.status(500).json({
             success: false,
-            message: err.message,
-            stack: err.stack
+            message: err.message
         });
     }
 });
 
 
 /* ==========================================
-   4. MOTEUR DE LECTURE OPTIQUE IA PYTHON (COMMUNICATION)
+   4. MOTEUR DE LECTURE OPTIQUE IA PYTHON
 ========================================== */
-
-function hashBits(bits){
-    return crypto.createHash('sha256').update(bits).digest('hex');
-}
 
 function getHammingDistance(s1, s2) {
     let d = 0;
@@ -189,39 +196,27 @@ function getHammingDistance(s1, s2) {
     return d;
 }
 
-/**
- * Envoie le fichier image au script Python pour extraction adaptative des formes
- */
 function extraireSignatureViaPython(imageBuffer) {
     return new Promise((resolve, reject) => {
         const tempFilePath = path.join(__dirname, `temp_verification_${Date.now()}.png`);
         const scriptPython = path.join(__dirname, 'analyser_sceau_v4.py');
         
         fs.writeFile(tempFilePath, imageBuffer, (err) => {
-            if (err) return reject(new Error("Échec de création du fichier d'analyse temporaire."));
+            if (err) return reject(new Error("Échec création fichier temp."));
 
-            // Exécution du script Python d'IA OpenCV
             const cmd = process.platform === "win32"
                 ? `python "${scriptPython}" "${tempFilePath}"`
                 : `python3 "${scriptPython}" "${tempFilePath}"`;
 
             exec(cmd, (pyErr, stdout, stderr) => {
-                // Nettoyage sécurisé du stockage local
                 if (fs.existsSync(tempFilePath)) fs.unlinkSync(tempFilePath);
-
-                if (pyErr) {
-                    console.error("Erreur Moteur Python :", stderr);
-                    return reject(new Error("Le traitement de l'image par le moteur IA a échoué."));
-                }
+                if (pyErr) return reject(new Error("Erreur moteur IA."));
 
                 try {
                     const formatJson = JSON.parse(stdout);
-                    if (!formatJson.success) {
-                        return reject(new Error(formatJson.message));
-                    }
                     resolve(formatJson);
                 } catch (parseErr) {
-                    reject(new Error("Impossible de décoder les données de l'IA Python."));
+                    reject(new Error("Erreur décodage IA."));
                 }
             });
         });
@@ -233,36 +228,28 @@ function extraireSignatureViaPython(imageBuffer) {
    5. VERIFICATION (Endpoint principal APK)
 ========================================== */
 app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (req, res) => {
-    console.log("Tentative de vérification reçue - Envoi au décodeur de formes Python...");
-
     try {
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: "Aucune image de sceau fournie." });
-        }
+        if (!req.file) return res.status(400).json({ success: false, message: "Aucune image." });
 
-        // Utilisation de la brique d'IA Python
         const signatureExtraite = await extraireSignatureViaPython(req.file.buffer);
-        console.log("Segments binaires reconstruits par l'IA Python :", signatureExtraite);
 
-        // Hashage de la lecture pour validation secondaire
-        const hashN = hashBits(signatureExtraite.noyau);
-        const hashT = hashBits(signatureExtraite.transition);
-        const hashP = hashBits(signatureExtraite.peripherie);
+        // Point 8 : Longueur segments
+        if(
+            signatureExtraite.noyau.length !== 20 ||
+            signatureExtraite.transition.length !== 30 ||
+            signatureExtraite.peripherie.length !== 40
+        ){
+            return res.status(400).json({ success: false, message: "Lecture du sceau invalide." });
+        }
 
         const { data: produits, error } = await supabase.from('sya_produit_certifie').select('*');
-
-        if (error || !produits) {
-            return res.status(500).json({ success: false, message: "Erreur de base de données." });
-        }
+        if (error) throw error;
 
         let meilleurMatch = null;
         let scoreMax = 0;
 
+        // Point 5, 6, 7 : Calcul score bits uniquement
         produits.forEach(p => {
-            if (!p.segment_noyau || !p.segment_transition || !p.segment_peripherie) {
-                return; 
-            }
-
             const dN = getHammingDistance(signatureExtraite.noyau, p.segment_noyau);
             const dT = getHammingDistance(signatureExtraite.transition, p.segment_transition);
             const dP = getHammingDistance(signatureExtraite.peripherie, p.segment_peripherie);
@@ -270,47 +257,25 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
             const totalErreurs = dN + dT + dP;
             const scoreBits = ((90 - totalErreurs) / 90) * 100;
 
-            // Comparaison des hashs de segments
-            const dbHashN = hashBits(p.segment_noyau);
-            const dbHashT = hashBits(p.segment_transition);
-            const dbHashP = hashBits(p.segment_peripherie);
-
-            const scoreHash = (
-                hashN === dbHashN &&
-                hashT === dbHashT &&
-                hashP === dbHashP
-            ) ? 100 : 0;
-
-            const score = Math.max(scoreBits, scoreHash);
-
-            if (score > scoreMax) {
-                scoreMax = score;
+            if (scoreBits > scoreMax) {
+                scoreMax = scoreBits;
                 meilleurMatch = p;
             }
         });
 
-        // Seuil de confiance abaissé à 55% pour tolérer les dommages physiques/variations sur les étiquettes
-        if (meilleurMatch && scoreMax >= 55) {
+        // Point 1 : Seuil 97%
+        if (meilleurMatch && scoreMax >= 97) {
             return res.json({
                 success: true,
                 produit: meilleurMatch,
-                timestamp_verification: new Date(),
                 confidence: scoreMax.toFixed(2) + "%"
             });
         } else {
-            console.log(`Échec de correspondance. Meilleur score trouvé : ${scoreMax.toFixed(2)}%`);
-            return res.status(404).json({ 
-                success: false, 
-                message: "Vérification impossible. Sceau inconnu, altéré ou non certifié ANOR." 
-            });
+            return res.status(404).json({ success: false, message: "Sceau non conforme ou inconnu." });
         }
 
     } catch (err) {
-        console.error("Erreur interne Vérification:", err);
-        return res.status(500).json({ 
-            success: false, 
-            message: err.message || "Une erreur interne est survenue lors de l'analyse du sceau." 
-        });
+        return res.status(500).json({ success: false, message: err.message });
     }
 });
 
@@ -320,7 +285,5 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
 ========================================== */
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log("-------------------------------------------------");
-    console.log(`[OK] ANOR Server (SYA) binaire démarré sur le port ${PORT}`);
-    console.log("-------------------------------------------------");
+    console.log(`[OK] ANOR Server démarré sur port ${PORT}`);
 });
