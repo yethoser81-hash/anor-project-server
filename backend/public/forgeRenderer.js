@@ -8,6 +8,12 @@
 
 const BLEU = "#336699";
 
+const EPAISSEUR_ANNEAU = {
+    noyau: 225,
+    transition: 320,
+    peripherie: 425
+};
+
 const W = 1000;
 const H = 1000;
 const C = 500;
@@ -180,17 +186,17 @@ function dessinerRosace(ctx){
 
     ctx.lineWidth=.9;
 
-    for(let i=0;i<96;i++){
+    for(let i=0;i<72;i++){
 
         ctx.save();
 
-        ctx.rotate(i*Math.PI*2/96);
+        ctx.rotate(i*Math.PI*2/72);
 
         ctx.beginPath();
 
-        ctx.moveTo(0,175);
+        ctx.moveTo(0,182);
 
-        ctx.lineTo(0,212);
+        ctx.lineTo(0,205);
 
         ctx.stroke();
 
@@ -320,7 +326,19 @@ function dessinerPrimitive(ctx,item){
 
         case "rectangle":
 
-            ctx.rect(-t*.32,-t,t*.64,t*2);
+            const h=t*(1.20+(item.famille||0)*0.18);
+
+            ctx.rect(
+
+                -t*.22,
+
+                -h/2,
+
+                t*.44,
+
+                h
+
+            );
 
         break;
 
@@ -382,36 +400,90 @@ function dessinerPrimitive(ctx,item){
 
         case "demi_cercle":
 
-            ctx.arc(0,0,t,Math.PI,0);
+            ctx.arc(
+
+                0,
+
+                0,
+
+                t*0.65,
+
+                Math.PI*0.15,
+
+                Math.PI*1.85
+
+            );
 
         break;
 
     }
 
 }
+
+/* Note: Anciennement dessinerPrimitive, renommé ici pour correspondre à ton intégration */
+function dessinerGlyphe(ctx, item) {
+    dessinerPrimitive(ctx, item);
+}
+
 /*==========================================================
 DESSIN D'UN ELEMENT CRYPTO
 ==========================================================*/
 
 function dessinerElement(ctx,item,angle){
 
-    const rayon=item.rayon+item.offset;
+    const rayon =
 
-    const x=C+Math.cos(angle)*rayon;
+        item.rayon +
 
-    const y=C+Math.sin(angle)*rayon;
+        item.offset +
+
+        (item.niveau || 0) * 8;
+
+    const x =
+
+        C +
+
+        Math.cos(angle) * rayon;
+
+    const y =
+
+        C +
+
+        Math.sin(angle) * rayon;
 
     ctx.save();
 
     ctx.translate(x,y);
 
-    ctx.rotate(angle+item.rotation*Math.PI/180);
+    ctx.rotate(
 
-    ctx.strokeStyle=couleur(item.couleur);
+        angle +
 
-    ctx.fillStyle=couleur(item.couleur);
+        item.rotation *
 
-    ctx.lineWidth=item.epaisseur;
+        Math.PI / 180
+
+    );
+
+    ctx.rotate(
+
+        ((item.cluster || 1)-2)
+
+        *0.08
+
+    );
+
+    ctx.strokeStyle=
+
+        couleur(item.couleur);
+
+    ctx.fillStyle=
+
+        couleur(item.couleur);
+
+    ctx.lineWidth=
+
+        item.epaisseur;
 
     if(item.miroir){
 
@@ -419,13 +491,21 @@ function dessinerElement(ctx,item,angle){
 
     }
 
-    dessinerPrimitive(ctx,item);
+    dessinerGlyphe(
+
+        ctx,
+
+        item
+
+    );
 
     if(item.plein){
 
         ctx.fill();
 
-    }else{
+    }
+
+    else{
 
         ctx.stroke();
 
@@ -439,15 +519,77 @@ function dessinerElement(ctx,item,angle){
 ANNEAU CRYPTO
 ==========================================================*/
 
-function dessinerAnneau(ctx,liste,decalage){
+function dessinerAnneau(
 
-    const pas=Math.PI*2/liste.length;
+    ctx,
 
-    liste.forEach((item,index)=>{
+    liste,
 
-        const angle=index*pas+decalage;
+    angleDepart
 
-        dessinerElement(ctx,item,angle);
+){
+
+    let angle =
+
+        angleDepart;
+
+    liste.forEach(item=>{
+
+        angle +=
+
+            (
+
+                item.espacement ||
+
+                5
+
+            ) *
+
+            Math.PI/
+
+            180;
+
+        const repetitions =
+
+            1 +
+
+            (
+
+                item.cluster ||
+
+                0
+
+            );
+
+        for(
+
+            let i=0;
+
+            i<repetitions;
+
+            i++
+
+        ){
+
+            dessinerElement(
+
+                ctx,
+
+                item,
+
+                angle +
+
+                i*.011
+
+            );
+
+        }
+
+        angle +=
+
+            item.taille
+
+            *.0035;
 
     });
 
@@ -465,7 +607,7 @@ function dessinerBibliotheque(ctx,bibliotheque){
 
         bibliotheque.noyau,
 
-        0
+        Math.PI/9
 
     );
 
@@ -475,7 +617,7 @@ function dessinerBibliotheque(ctx,bibliotheque){
 
         bibliotheque.transition,
 
-        Math.PI/90
+        Math.PI/5
 
     );
 
@@ -485,7 +627,7 @@ function dessinerBibliotheque(ctx,bibliotheque){
 
         bibliotheque.peripherie,
 
-        Math.PI/60
+        Math.PI/3
 
     );
 
@@ -595,9 +737,9 @@ function dessinerPerles(ctx){
 
     ctx.fillStyle=BLEU;
 
-    for(let i=0;i<360;i++){
+    for(let i=0;i<240;i++){
 
-        const a=i*Math.PI*2/360;
+        const a=i*Math.PI*2/240;
 
         ctx.beginPath();
 
@@ -607,7 +749,7 @@ function dessinerPerles(ctx){
 
             C+Math.sin(a)*468,
 
-            .8,
+            1.05,
 
             0,
 
@@ -734,7 +876,7 @@ function dessinerMicroCercles(ctx){
 
     ctx.lineWidth=.35;
 
-    for(let r=250;r<440;r+=15){
+    for(let r=255;r<435;r+=22){
 
         ctx.beginPath();
 

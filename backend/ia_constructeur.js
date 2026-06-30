@@ -1,76 +1,167 @@
 /**
  * ============================================================
  * ia_constructeur.js
- * IA CONSTRUCTEUR ANOR V2
- * Transforme la signature binaire en bibliothèque graphique.
+ * ANOR V3
+ * IA Constructeur des glyphes
  * ============================================================
  */
 
-const BIBLIOTHEQUE = require("./bibliotheque_formes");
+const GLYPHES = require("./bibliotheque_glyphes");
 
-function bitsToInt(bits) {
-    return parseInt(bits, 2);
+/*==========================================================
+UTILITAIRES
+==========================================================*/
+
+function bitsToInt(bits){
+
+    return parseInt(bits,2);
+
 }
 
-function construireAnneau(signature, debut, longueur, rayonBase) {
+function lireBloc(signature,debut,longueur){
 
-    const liste = [];
+    let chaine="";
 
-    for (let i = 0; i < longueur; i++) {
+    while(chaine.length<longueur){
 
-        const p = debut + i;
+        chaine+=signature;
 
-        const bloc = (
-            signature +
-            signature +
-            signature
-        ).substring(p, p + 8);
+    }
 
-        const valeur = bitsToInt(bloc);
+    return chaine.substring(debut,debut+longueur);
 
-        const forme =
-            BIBLIOTHEQUE[
-                valeur % BIBLIOTHEQUE.length
-            ];
+}
 
-        liste.push({
+/*==========================================================
+CONSTRUCTION D'UN GLYPHE
+==========================================================*/
 
-            id: i,
+function construireGlyphe(signature,index,rayonBase){
 
-            bit: signature[p],
+    const bloc=lireBloc(
 
-            forme: forme.nom,
+        signature,
 
-            valeur: forme.valeur,
+        index*6,
 
-            taille:
-                8 +
-                (valeur % 18),
+        12
 
-            rotation:
-                valeur % 360,
+    );
 
-            epaisseur:
-                1 +
-                (valeur % 3),
+    const valeur=bitsToInt(bloc);
 
-            plein:
-                (valeur & 1) === 1,
+    const glyphe=
 
-            rayon:
-                rayonBase +
-                ((valeur >> 2) % 18) - 9,
+        GLYPHES[
 
-            offset:
-                ((valeur >> 5) % 9) - 4,
+            valeur%
 
-            couleur:
-                valeur % 3,
+            GLYPHES.length
 
-            miroir:
-                (valeur & 8) !== 0
+        ];
 
-        });
+    const poids =
+        (valeur % 100) / 100;
+
+    const famille =
+        (valeur >> 3) % 8;
+
+    const variation =
+        (valeur >> 5) % 16;
+
+    return{
+
+        id:index,
+
+        valeur,
+
+        glyphe,
+
+        angleSeed:
+            valeur%360,
+
+        rayon:
+            rayonBase+
+            ((valeur>>2)%20)-10,
+
+        niveau:
+            (valeur>>5)%3,
+
+        orientation:
+            valeur%360,
+
+        taille:
+            0.8+
+            ((valeur>>3)%5)*0.15,
+
+        cluster:
+            (valeur>>7)%4,
+
+        espace:
+            5+
+            (valeur%9),
+
+        miroir:
+            (valeur&1)==1,
+
+        couleur:
+            (valeur>>4)%3,
+
+        epaisseur:
+            1+
+            (valeur%2),
+
+        poids,
+
+        famille,
+
+        variation
+
+    };
+
+}
+
+/*==========================================================
+CONSTRUCTION D'UN ANNEAU
+==========================================================*/
+
+function construireAnneau(
+
+    signature,
+
+    debut,
+
+    nombre,
+
+    rayon
+
+){
+
+    const liste=[];
+
+    for(
+
+        let i=0;
+
+        i<nombre;
+
+        i++
+
+    ){
+
+        liste.push(
+
+            construireGlyphe(
+
+                signature,
+
+                debut+i,
+
+                rayon
+
+            )
+
+        );
 
     }
 
@@ -78,42 +169,60 @@ function construireAnneau(signature, debut, longueur, rayonBase) {
 
 }
 
-function construireBibliotheque(signature) {
+/*==========================================================
+CONSTRUCTEUR GLOBAL
+==========================================================*/
 
-    if (!signature)
+function construireBibliotheque(signature){
+
+    if(!signature)
         throw new Error("Signature absente.");
 
-    if (signature.length !== 90)
+    if(signature.length!==90)
         throw new Error("Signature invalide.");
 
-    return {
+    return{
+
+        signature,
+
+        meta:{
+
+            version:3,
+
+            densite:24,
+
+            signatureBits:90
+
+        },
 
         noyau:
             construireAnneau(
                 signature,
                 0,
-                20,
-                230
+                6,
+                240
             ),
 
         transition:
             construireAnneau(
                 signature,
-                20,
-                30,
-                325
+                6,
+                8,
+                330
             ),
 
         peripherie:
             construireAnneau(
                 signature,
-                50,
-                40,
-                430
+                14,
+                10,
+                425
             )
 
     };
 
 }
 
-module.exports = construireBibliotheque;
+module.exports=
+
+construireBibliotheque;

@@ -1,305 +1,325 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Forge ANOR - Certification Souveraine</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ANOR - Forge Haute Sécurité</title>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="./forgeRenderer.js"></script>
 
-    <script src="./forgeRenderer.js"></script>
+<style>
+:root {
+    --green:#008751;
+    --red:#ce1126;
+    --yellow:#fcd116;
+    --dark:#2d3436;
+}
 
-    <style>
-        :root { --anor-blue: #336699; --bg-color: #f4f7f6; }
+body {
+    margin:0;
+    font-family: 'Segoe UI', sans-serif;
+    background:#f0f3f5;
+    display:flex;
+    height:100vh;
+    color:var(--dark);
+}
 
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            background: var(--bg-color);
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-        }
+/* SIDEBAR */
+.sidebar {
+    width:420px;
+    background:#fff;
+    padding:20px;
+    overflow-y:auto;
+    box-shadow:5px 0 25px rgba(0,0,0,0.08);
+}
 
-        .main-wrapper {
-            display: flex;
-            gap: 30px;
-            width: 100%;
-            max-width: 1200px;
-            align-items: flex-start;
-        }
+h2 {
+    color:var(--green);
+    border-left:5px solid var(--yellow);
+    padding-left:10px;
+    font-size:18px;
+    margin-bottom:20px;
+}
 
-        .forge-card, .preview-pane {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
+.form-group {
+    margin-bottom:12px;
+}
 
-        .forge-card { width: 40%; }
-        .preview-pane { width: 60%; text-align: center; }
+label {
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    color:#636e72;
+}
 
-        h2 {
-            color: var(--anor-blue);
-            text-align: center;
-            border-bottom: 2px solid var(--anor-blue);
-            padding-bottom: 10px;
-        }
+input,select,textarea {
+    width:100%;
+    padding:10px;
+    border:1px solid #dfe6e9;
+    border-radius:6px;
+    margin-top:4px;
+    font-size:14px;
+}
 
-        .form-group { margin-bottom: 15px; }
+textarea {
+    resize:none;
+}
 
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 5px;
-            font-size: 0.85em;
-        }
+button {
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+    font-weight:800;
+    background:linear-gradient(135deg,#1e3799,#0984e3);
+    color:white;
+    transition:0.2s;
+}
 
-        input, select {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-        }
+button:hover {
+    transform:translateY(-2px);
+    filter:brightness(1.1);
+}
 
-        button {
-            background: var(--anor-blue);
-            color: white;
-            padding: 12px;
-            border: none;
-            cursor: pointer;
-            width: 100%;
-            border-radius: 6px;
-            font-weight: bold;
-        }
+/* MAIN */
+.main {
+    flex:1;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:radial-gradient(circle,#eef2f3,#cfd8dc);
+    padding:20px;
+}
 
-        button:hover { background: #2a5580; }
+.card {
+    width:850px;
+    background:#fff;
+    border-radius:18px;
+    padding:25px;
+    box-shadow:0 30px 60px rgba(0,0,0,0.15);
+    text-align:center;
+}
 
-        canvas {
-            background: white;
-            border-radius: 50%;
-            border: 2px solid #ccc;
-            width: 300px;
-            height: 300px;
-        }
+.status {
+    display:inline-block;
+    padding:6px 15px;
+    border-radius:30px;
+    background:#d1e7dd;
+    color:#0f5132;
+    font-weight:700;
+    font-size:12px;
+    margin-bottom:15px;
+}
 
-        #sceau_zone {
-            display: none;
-            margin-top: 20px;
-        }
+.preview {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+    margin-top:15px;
+}
 
-        #img_preview {
-            max-width: 300px;
-            margin: 10px auto;
-            border: 2px solid #ccc;
-            border-radius: 10px;
-        }
-        .hidden { display: none; }
-    </style>
+.box {
+    border:2px solid #eee;
+    border-radius:12px;
+    padding:10px;
+    background:#fafafa;
+}
+
+canvas {
+    width:100%;
+    border-radius:10px;
+}
+
+img {
+    width:100%;
+    border-radius:10px;
+}
+
+.hidden { display:none; }
+</style>
 </head>
 
 <body>
 
-<div class="main-wrapper">
+<div class="sidebar">
+<h2>FORGE ANOR - CERTIFICATION</h2>
 
-    <div class="forge-card">
-        <h2>FORGE ANOR</h2>
+<div class="form-group">
+<label>Nom produit</label>
+<input id="nom_produit">
+</div>
 
-        <form id="forgeForm">
+<div class="form-group">
+<label>Producteur</label>
+<input id="nom_producteur">
+</div>
 
-            <div class="form-group">
-                <label>NOM PRODUIT</label>
-                <input type="text" id="nom_produit" required>
-            </div>
+<div class="form-group">
+<label>Composition</label>
+<input id="composition">
+</div>
 
-            <div class="form-group">
-                <label>PRODUCTEUR</label>
-                <input type="text" id="nom_producteur" required>
-            </div>
+<div class="form-group">
+<label>Lot</label>
+<input id="lot">
+</div>
 
-            <div class="form-group">
-                <label>COMPOSITION</label>
-                <input type="text" id="composition" required>
-            </div>
+<div class="form-group">
+<label>Quantité (sérialisation interne)</label>
+<input id="quantite" type="number" value="1">
+</div>
 
-            <div class="form-group">
-                <label>LOT</label>
-                <input type="text" id="lot" required>
-            </div>
+<div class="form-group">
+<label>Type emballage</label>
+<input id="type_emballage">
+</div>
 
-            <div class="form-group">
-                <label>QUANTITÉ</label>
-                <input type="number" id="quantite" value="1" required>
-            </div>
+<div class="form-group">
+<label>Pays d'origine</label>
+<input id="pays_origine" oninput="toggleDates()">
+</div>
 
-            <div class="form-group">
-                <label>RÉFÉRENTIEL APPLICABLE</label>
-                <input type="text" id="referentiel_applicable" required>
-            </div>
+<div id="camFields" class="hidden">
+<div class="form-group">
+<label>Date certificat conformité</label>
+<input type="date" id="date_certificat_conformite">
+</div>
+</div>
 
-            <div class="form-group">
-                <label>NORME</label>
-                <input type="text" id="norme" required>
-            </div>
+<div id="otherFields">
+<div class="form-group">
+<label>Date fabrication</label>
+<input type="date" id="date_fabrication">
+</div>
 
-            <div class="form-group">
-                <label>EMBALLAGE</label>
-                <input type="text" id="type_emballage" required>
-            </div>
+<div class="form-group">
+<label>Date péremption</label>
+<input type="date" id="date_peremption">
+</div>
+</div>
 
-            <div class="form-group">
-                <label>PAYS D'ORIGINE</label>
-                <input type="text" id="pays_origine" oninput="toggleFields()">
-            </div>
+<div class="form-group">
+<label>Certificat PDF</label>
+<input type="file" id="certificat_pdf">
+</div>
 
-            <div id="camerounFields" class="hidden">
-                <div class="form-group"><label>DATE CERTIFICAT CONFORMITÉ</label><input type="date" id="date_certificat_conformite"></div>
-            </div>
-            <div id="autreFields">
-                <div class="form-group"><label>DATE FABRICATION</label><input type="date" id="date_fabrication"></div>
-                <div class="form-group"><label>DATE PÉREMPTION</label><input type="date" id="date_peremption"></div>
-            </div>
+<div class="form-group">
+<label>Visuel produit</label>
+<input type="file" id="visuel" accept="image/*">
+</div>
 
-            <div class="form-group">
-                <label>CERTIFICAT DE CONFORMITÉ (PDF)</label>
-                <input type="file" id="certificat_pdf" accept="application/pdf">
-            </div>
+<button onclick="submitForge()">GÉNÉRER SCEAU</button>
+</div>
 
-            <div class="form-group">
-                <label>VISUEL DU PRODUIT</label>
-                <input type="file" id="file_visuel" accept="image/*">
-            </div>
+<div class="main">
 
-            <button type="submit">GÉNÉRER LE SCEAU</button>
-        </form>
+<div class="card">
+<div id="status" class="status">TERMINAL PRÊT</div>
+
+<div class="preview">
+    <div class="box">
+        <canvas id="sceauCanvas" width="1000" height="1000"></canvas>
     </div>
 
-    <div class="preview-pane">
-
-        <h2>PRÉVISUALISATION</h2>
-
-        <img id="img_preview">
-
-        <div id="sceau_zone">
-            <canvas id="sceauCanvas" width="1000" height="1000"></canvas>
-            <p id="sig_debug"></p>
-
-            <button id="btnDownload" onclick="telechargerKit()">
-                📥 Télécharger ZIP
-            </button>
-        </div>
-
+    <div class="box">
+        <img id="previewImg" style="display:none;">
+        <div id="placeholder">Aucune image</div>
     </div>
+</div>
+
+<p id="debug"></p>
+
+<button onclick="downloadKit()">Télécharger Kit</button>
+</div>
 
 </div>
 
 <script>
-/* =========================
-   LOGIQUE ORIGINE/DATES
-========================= */
-function toggleFields() {
-    const pays = document.getElementById('pays_origine').value.toLowerCase().trim();
-    if (pays === 'cameroun') {
-        document.getElementById('camerounFields').classList.remove('hidden');
-        document.getElementById('autreFields').classList.add('hidden');
-    } else {
-        document.getElementById('camerounFields').classList.add('hidden');
-        document.getElementById('autreFields').classList.remove('hidden');
-    }
-}
+const API = "";
 
-/* =========================
-   PREVIEW IMAGE
-========================= */
-function previewFile() {
-    const file = document.getElementById('file_visuel').files[0];
-    if (!file) return;
+let imgBase64 = "";
+let currentSignature = "";
+
+document.getElementById("visuel").addEventListener("change", e => {
+    const file = e.target.files[0];
+    if(!file) return;
 
     const reader = new FileReader();
-    reader.onload = e => {
-        document.getElementById('img_preview').src = e.target.result;
+    reader.onload = ev => {
+        imgBase64 = ev.target.result;
+        document.getElementById("previewImg").src = imgBase64;
+        document.getElementById("previewImg").style.display = "block";
+        document.getElementById("placeholder").style.display = "none";
     };
     reader.readAsDataURL(file);
-}
-
-document.getElementById('file_visuel')
-    .addEventListener('change', previewFile);
-
-/* =========================
-   SUBMIT FORGE
-========================= */
-document.getElementById('forgeForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const nonce = crypto.randomUUID
-        ? crypto.randomUUID()
-        : Date.now().toString() + Math.random().toString(36).substring(2);
-
-    const formData = new FormData();
-    formData.append('nom_produit', document.getElementById('nom_produit').value);
-    formData.append('nom_producteur', document.getElementById('nom_producteur').value);
-    formData.append('composition', document.getElementById('composition').value);
-    formData.append('lot', document.getElementById('lot').value);
-    formData.append('quantite', document.getElementById('quantite').value);
-    formData.append('referentiel_applicable', document.getElementById('referentiel_applicable').value);
-    formData.append('norme', document.getElementById('norme').value);
-    formData.append('type_emballage', document.getElementById('type_emballage').value);
-    formData.append('pays_origine', document.getElementById('pays_origine').value);
-    formData.append("nonce", nonce);
-    
-    const pays = document.getElementById('pays_origine').value.toLowerCase().trim();
-    if (pays === 'cameroun') {
-        formData.append('date_certificat_conformite', document.getElementById('date_certificat_conformite').value);
-    } else {
-        formData.append('date_fabrication', document.getElementById('date_fabrication').value);
-        formData.append('date_peremption', document.getElementById('date_peremption').value);
-    }
-
-    formData.append('certificat_pdf', document.getElementById('certificat_pdf').files[0]);
-    formData.append('visuel', document.getElementById('file_visuel').files[0]);
-
-    try {
-        const response = await fetch('/api/produit/enregistrer', {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (!result.success) {
-            alert(result.message);
-            return;
-        }
-
-        document.getElementById('sceau_zone').style.display = 'block';
-        document.getElementById('sig_debug').innerText =
-            "Signature: " + result.code_sceau.substring(0, 32);
-
-        window.dessinerSceauPremium(result.bibliotheque);
-
-    } catch (err) {
-        alert("Erreur lors de l'enregistrement du lot.");
-    }
 });
 
-/* =========================
-   DOWNLOAD KIT
-========================= */
-async function telechargerKit() {
+function toggleDates() {
+    const p = document.getElementById("pays_origine").value.toLowerCase().trim();
+    if(p === "cameroun") {
+        document.getElementById("camFields").classList.remove("hidden");
+        document.getElementById("otherFields").classList.add("hidden");
+    } else {
+        document.getElementById("camFields").classList.add("hidden");
+        document.getElementById("otherFields").classList.remove("hidden");
+    }
+}
+
+async function submitForge() {
+
+    const nonce = crypto.randomUUID();
+
+    const formData = new FormData();
+    formData.append("nom_produit", nom_produit.value);
+    formData.append("nom_producteur", nom_producteur.value);
+    formData.append("composition", composition.value);
+    formData.append("lot", lot.value);
+    formData.append("type_emballage", type_emballage.value);
+    formData.append("pays_origine", pays_origine.value);
+    formData.append("nonce", nonce);
+
+    if(pays_origine.value.toLowerCase() === "cameroun") {
+        formData.append("date_certificat_conformite", date_certificat_conformite.value);
+    } else {
+        formData.append("date_fabrication", date_fabrication.value);
+        formData.append("date_peremption", date_peremption.value);
+    }
+
+    formData.append("certificat_pdf", certificat_pdf.files[0]);
+    formData.append("visuel", visuel.files[0]);
+
+    const res = await fetch("/api/produit/enregistrer", {
+        method:"POST",
+        body:formData
+    });
+
+    const data = await res.json();
+
+    if(!data.success) return alert(data.message);
+
+    currentSignature = data.code_sceau;
+
+    document.getElementById("status").innerText = "SCEAU GÉNÉRÉ";
+    document.getElementById("debug").innerText = currentSignature.substring(0,40);
+
+    window.dessinerSceauPremium(data.bibliotheque);
+}
+
+async function downloadKit() {
+
     const zip = new JSZip();
 
-    const canvas = document.getElementById('sceauCanvas');
-    const nom = document.getElementById('nom_produit').value.replace(/\s+/g, '_');
+    const canvas = document.getElementById("sceauCanvas");
 
-    zip.file(`${nom}_sceau.png`,
-        canvas.toDataURL().split(',')[1],
-        {base64: true}
-    );
+    zip.file("sceau.png", canvas.toDataURL().split(",")[1], {base64:true});
 
     const blob = await zip.generateAsync({type:"blob"});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${nom}_kit.zip`;
-    link.click();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "KIT_ANOR.zip";
+    a.click();
 }
 </script>
 
