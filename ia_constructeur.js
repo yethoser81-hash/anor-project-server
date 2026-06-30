@@ -6,7 +6,7 @@
  * ============================================================
  */
 
-const GLYPHES = require("./bibliotheque_glyphes");
+const GLYPHES = require("./forge/bibliotheque_glyphes");
 
 /*==========================================================
 UTILITAIRES
