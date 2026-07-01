@@ -17,9 +17,5 @@
     "multer": "^2.2.0",
     "uuid": "^14.0.1"
   },
-  "description": "",
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs"
 }
