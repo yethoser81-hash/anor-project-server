@@ -14,7 +14,19 @@ UTILITAIRES
 ==========================================================*/
 
 function bitsToInt(bits){
+
+    bits = String(bits).replace(/[^01]/g,"");
+
+    if(bits.length===0){
+
+        throw new Error(
+            "Bloc binaire vide."
+        );
+
+    }
+
     return parseInt(bits,2);
+
 }
 
 function lireBloc(signature,debut,longueur){
@@ -53,13 +65,21 @@ function construireGlyphe(
     rayonBase
 ){
 
-    const bloc=lireBloc(
+    const bloc = lireBloc(
         signature,
-        index*11,
+        index * 11,
         20
     );
 
-    const valeur=bitsToInt(bloc);
+    if(!/^[01]{20}$/.test(bloc)){
+
+        throw new Error(
+            `Bloc binaire invalide : "${bloc}"`
+        );
+
+    }
+
+    const valeur = bitsToInt(bloc);
 
     const modele = choixGlyphes(valeur);
 

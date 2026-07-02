@@ -208,6 +208,9 @@ app.post('/api/produit/enregistrer', upload.fields([
         }
         signatureBinaire = signatureBinaire.substring(0, 90);
 
+        console.log("Signature :", signatureBinaire);
+        console.log("Longueur :", signatureBinaire.length);
+
         const bibliotheque = enrichirBibliotheque(signatureBinaire);
         if(!bibliotheque){
             throw new Error("Bibliothèque IA invalide.");
