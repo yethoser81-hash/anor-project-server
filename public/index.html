@@ -6,7 +6,10 @@
 <title>ANOR - Forge Haute Sécurité</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="./forgeRenderer.js"></script>
+<script src="/forge/dessin_primitives.js"></script>
+<script src="/forge/dessin_glyphes.js"></script>
+<script src="/forge/dessin_guilloches.js"></script>
+<script src="/forge/forgeRenderer.js"></script>
 
 <style>
 :root {
@@ -304,7 +307,7 @@ async function submitForge() {
     document.getElementById("status").innerText = "SCEAU GÉNÉRÉ";
     document.getElementById("debug").innerText = currentSignature.substring(0,40);
 
-    window.dessinerSceauPremium(data.bibliotheque);
+    window.genererSceau("sceauCanvas", data.bibliotheque);
 }
 
 async function downloadKit() {
