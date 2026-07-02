@@ -29,15 +29,15 @@ function bitsToInt(bits){
 
 }
 
-function lireBloc(signature,debut,longueur){
+function lireBloc(signature, debut, longueur) {
 
-    let chaine="";
+    let chaine = signature;
 
-    while(chaine.length<longueur){
-        chaine+=signature;
+    while (chaine.length < debut + longueur) {
+        chaine += signature;
     }
 
-    return chaine.substring(debut,debut+longueur);
+    return chaine.substr(debut, longueur);
 
 }
 
