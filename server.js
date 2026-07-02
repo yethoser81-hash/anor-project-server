@@ -129,7 +129,11 @@ if (!ANOR_SECRET) {
 
 app.use(cors({ origin: '*' })); 
 app.use(express.json());
+
+// Fichiers statiques
 app.use(express.static(path.join(__dirname, 'public')));
+// Exposition du dossier forge (Correction pour les 404)
+app.use('/forge', express.static(path.join(__dirname, 'forge')));
 
 
 /* ==========================================

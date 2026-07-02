@@ -241,6 +241,7 @@ img {
 
 <script>
 const API = "";
+let currentKitUrl = null;
 
 let imgBase64 = "";
 let currentSignature = "";
@@ -271,6 +272,10 @@ function toggleDates() {
 }
 
 async function submitForge() {
+    // Validation basique
+    if(!nom_produit.value || !lot.value || !visuel.files[0]) {
+        return alert("Veuillez remplir les champs obligatoires et fournir un visuel.");
+    }
 
     const nonce = crypto.randomUUID();
 
@@ -303,6 +308,8 @@ async function submitForge() {
     if(!data.success) return alert(data.message);
 
     currentSignature = data.code_sceau;
+    // On récupère l'ID via le backend ou on stocke l'url
+    currentKitUrl = `/api/produit/kit/${data.produit_id || data.id || 'dernier'}`; 
 
     document.getElementById("status").innerText = "SCEAU GÉNÉRÉ";
     document.getElementById("debug").innerText = currentSignature.substring(0,40);
@@ -311,18 +318,10 @@ async function submitForge() {
 }
 
 async function downloadKit() {
-
-    const zip = new JSZip();
-
-    const canvas = document.getElementById("sceauCanvas");
-
-    zip.file("sceau.png", canvas.toDataURL().split(",")[1], {base64:true});
-
-    const blob = await zip.generateAsync({type:"blob"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "KIT_ANOR.zip";
-    a.click();
+    if(!currentKitUrl) return alert("Générez un sceau d'abord.");
+    
+    // Téléchargement sécurisé via le serveur
+    window.location.href = currentKitUrl;
 }
 </script>
 
