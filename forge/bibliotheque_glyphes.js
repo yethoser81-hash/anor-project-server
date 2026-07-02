@@ -1,264 +1,64 @@
 /**
  * ============================================================
  * bibliotheque_glyphes.js
- * ANOR V3
- * Bibliothèque officielle des glyphes.
- *
- * Chaque glyphe est composé de plusieurs primitives.
+ * ANOR V4
+ * ~100 glyphes (formes simples uniquement)
  * ============================================================
  */
 
-const GLYPHES = [
+const GLYPHES = (() => {
 
-/*==========================================================
-G01
-==========================================================*/
+    const formes = [
+        "rectangle",
+        "carre",
+        "cercle",
+        "triangle",
+        "losange",
+        "croix",
+        "barre_verticale"
+    ];
 
-{
-    nom: "G01",
+    const base = [
+        { x: 0, y: -10, taille: 18, rotation: 0, plein: true },
+        { x: 0, y: 10, taille: 14, rotation: 0, plein: false },
+        { x: -8, y: 0, taille: 16, rotation: -15, plein: true },
+        { x: 8, y: 0, taille: 16, rotation: 15, plein: false }
+    ];
 
-    elements: [
+    const glyphes = [];
 
-        {
-            forme: "rectangle",
-            x: 0,
-            y: -10,
-            taille: 18,
-            rotation: 0,
-            plein: true
-        },
+    for (let i = 0; i < 100; i++) {
 
-        {
-            forme: "rectangle",
-            x: 0,
-            y: 10,
-            taille: 14,
-            rotation: 0,
-            plein: true
-        }
+        const forme = formes[i % formes.length];
 
-    ]
-},
+        const b = base[i % base.length];
 
-/*==========================================================
-G02
-==========================================================*/
+        glyphes.push({
+            nom: `G${String(i + 1).padStart(2, "0")}`,
+            elements: [
+                {
+                    forme,
+                    x: b.x + (i % 5),
+                    y: b.y - (i % 7),
+                    taille: b.taille + (i % 6),
+                    rotation: (i * 7) % 360,
+                    plein: (i % 2 === 0)
+                },
+                {
+                    forme,
+                    x: -b.x,
+                    y: -b.y,
+                    taille: Math.max(6, b.taille - (i % 5)),
+                    rotation: (i * 11) % 360,
+                    plein: (i % 3 !== 0)
+                }
+            ]
+        });
 
-{
-    nom: "G02",
+    }
 
-    elements: [
+    return glyphes;
 
-        {
-            forme: "cercle",
-            x: 0,
-            y: 0,
-            taille: 12,
-            rotation: 0,
-            plein: false
-        },
-
-        {
-            forme: "croix",
-            x: 0,
-            y: 0,
-            taille: 8,
-            rotation: 0,
-            plein: false
-        }
-
-    ]
-},
-
-/*==========================================================
-G03
-==========================================================*/
-
-{
-    nom: "G03",
-
-    elements: [
-
-        {
-            forme: "triangle",
-            x: 0,
-            y: -8,
-            taille: 18,
-            rotation: 0,
-            plein: true
-        },
-
-        {
-            forme: "losange",
-            x: 0,
-            y: 12,
-            taille: 8,
-            rotation: 45,
-            plein: true
-        }
-
-    ]
-},
-
-/*==========================================================
-G04
-==========================================================*/
-
-{
-    nom: "G04",
-
-    elements: [
-
-        {
-            forme: "rectangle",
-            x: -8,
-            y: 0,
-            taille: 16,
-            rotation: -18,
-            plein: true
-        },
-
-        {
-            forme: "rectangle",
-            x: 8,
-            y: 0,
-            taille: 16,
-            rotation: 18,
-            plein: true
-        }
-
-    ]
-},
-
-/*==========================================================
-G05
-==========================================================*/
-
-{
-    nom: "G05",
-
-    elements: [
-
-        {
-            forme: "barre_verticale",
-            x: -6,
-            y: 0,
-            taille: 16,
-            rotation: 0,
-            plein: true
-        },
-
-        {
-            forme: "barre_verticale",
-            x: 6,
-            y: 0,
-            taille: 16,
-            rotation: 0,
-            plein: true
-        },
-
-        {
-            forme: "cercle",
-            x: 0,
-            y: 0,
-            taille: 6,
-            rotation: 0,
-            plein: true
-        }
-
-    ]
-},
-
-/*==========================================================
-G06
-==========================================================*/
-
-{
-    nom: "G06",
-
-    elements: [
-
-        {
-            forme: "losange",
-            x: 0,
-            y: -10,
-            taille: 10,
-            rotation: 45,
-            plein: false
-        },
-
-        {
-            forme: "losange",
-            x: 0,
-            y: 10,
-            taille: 10,
-            rotation: 45,
-            plein: true
-        }
-
-    ]
-},
-
-/*==========================================================
-G07
-==========================================================*/
-
-{
-    nom: "G07",
-
-    elements: [
-
-        {
-            forme: "rectangle",
-            x: -8,
-            y: -8,
-            taille: 10,
-            rotation: 0,
-            plein: true
-        },
-
-        {
-            forme: "rectangle",
-            x: 8,
-            y: 8,
-            taille: 10,
-            rotation: 0,
-            plein: false
-        }
-
-    ]
-},
-
-/*==========================================================
-G08
-==========================================================*/
-
-{
-    nom: "G08",
-
-    elements: [
-
-        {
-            forme: "triangle",
-            x: -6,
-            y: 4,
-            taille: 12,
-            rotation: -15,
-            plein: true
-        },
-
-        {
-            forme: "triangle",
-            x: 6,
-            y: -4,
-            taille: 8,
-            rotation: 165,
-            plein: false
-        }
-
-    ]
-}
-
-];
+})();
 
 module.exports = GLYPHES;

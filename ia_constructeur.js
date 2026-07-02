@@ -1,8 +1,8 @@
 /**
  * ============================================================
  * ia_constructeur.js
- * ANOR V3
- * IA Constructeur des glyphes
+ * ANOR V4
+ * Constructeur cryptographique de glyphes
  * ============================================================
  */
 
@@ -13,9 +13,7 @@ UTILITAIRES
 ==========================================================*/
 
 function bitsToInt(bits){
-
     return parseInt(bits,2);
-
 }
 
 function lireBloc(signature,debut,longueur){
@@ -23,12 +21,24 @@ function lireBloc(signature,debut,longueur){
     let chaine="";
 
     while(chaine.length<longueur){
-
         chaine+=signature;
-
     }
 
     return chaine.substring(debut,debut+longueur);
+
+}
+
+function clamp(v,min,max){
+
+    return Math.max(min,Math.min(max,v));
+
+}
+
+function choixGlyphes(valeur){
+
+    return GLYPHES[
+        valeur % GLYPHES.length
+    ];
 
 }
 
@@ -36,86 +46,82 @@ function lireBloc(signature,debut,longueur){
 CONSTRUCTION D'UN GLYPHE
 ==========================================================*/
 
-function construireGlyphe(signature,index,rayonBase){
+function construireGlyphe(
+    signature,
+    index,
+    rayonBase
+){
 
     const bloc=lireBloc(
-
         signature,
-
-        index*6,
-
-        12
-
+        index*11,
+        20
     );
 
     const valeur=bitsToInt(bloc);
 
-    const glyphe=
-
-        GLYPHES[
-
-            valeur%
-
-            GLYPHES.length
-
-        ];
-
-    const poids =
-        (valeur % 100) / 100;
-
-    const famille =
-        (valeur >> 3) % 8;
-
-    const variation =
-        (valeur >> 5) % 16;
+    const modele=
+        choixGlyphes(valeur);
 
     return{
 
         id:index,
 
+        modele,
+
+        nom:modele.nom,
+
+        elements:JSON.parse(
+            JSON.stringify(
+                modele.elements
+            )
+        ),
+
         valeur,
-
-        glyphe,
-
-        angleSeed:
-            valeur%360,
 
         rayon:
             rayonBase+
-            ((valeur>>2)%20)-10,
+            ((valeur>>2)%18)-9,
 
-        niveau:
-            (valeur>>5)%3,
-
-        orientation:
+        rotation:
             valeur%360,
 
         taille:
-            0.8+
-            ((valeur>>3)%5)*0.15,
-
-        cluster:
-            (valeur>>7)%4,
-
-        espace:
-            5+
-            (valeur%9),
-
-        miroir:
-            (valeur&1)==1,
-
-        couleur:
-            (valeur>>4)%3,
+            12+
+            ((valeur>>4)%14),
 
         epaisseur:
+            0.8+
+            ((valeur>>5)%4)*0.35,
+
+        couleur:
+            (valeur>>6)%3,
+
+        miroir:
+            ((valeur>>7)&1)==1,
+
+        plein:
+            ((valeur>>8)&1)==1,
+
+        cluster:
             1+
-            (valeur%2),
+            ((valeur>>9)%3),
 
-        poids,
+        espacement:
+            5+
+            ((valeur>>10)%8),
 
-        famille,
+        offset:
+            ((valeur>>13)%14)-7,
 
-        variation
+        niveau:
+            (valeur>>15)%4,
+
+        famille:
+            (valeur>>17)%8,
+
+        variation:
+            (valeur>>19)%16
 
     };
 
@@ -170,53 +176,101 @@ function construireAnneau(
 }
 
 /*==========================================================
-CONSTRUCTEUR GLOBAL
+METADONNEES
+==========================================================*/
+
+function construireMeta(signature){
+
+    let somme=0;
+
+    for(let i=0;i<signature.length;i++){
+
+        somme+=Number(signature[i]);
+
+    }
+
+    return{
+
+        version:4,
+
+        longueurSignature:signature.length,
+
+        glyphesDisponibles:GLYPHES.length,
+
+        checksum:somme,
+
+        densite:24
+
+    };
+
+}
+
+/*==========================================================
+BIBLIOTHEQUE COMPLETE
 ==========================================================*/
 
 function construireBibliotheque(signature){
 
-    if(!signature)
-        throw new Error("Signature absente.");
+    if(!signature){
 
-    if(signature.length!==90)
-        throw new Error("Signature invalide.");
+        throw new Error(
+            "Signature absente."
+        );
+
+    }
+
+    if(signature.length!==90){
+
+        throw new Error(
+            "Signature invalide."
+        );
+
+    }
 
     return{
 
         signature,
 
-        meta:{
-
-            version:3,
-
-            densite:24,
-
-            signatureBits:90
-
-        },
+        meta:
+            construireMeta(signature),
 
         noyau:
             construireAnneau(
+
                 signature,
+
                 0,
-                6,
-                240
+
+                18,
+
+                245
+
             ),
 
         transition:
             construireAnneau(
+
                 signature,
-                6,
-                8,
-                330
+
+                18,
+
+                28,
+
+                335
+
             ),
 
         peripherie:
             construireAnneau(
+
                 signature,
-                14,
-                10,
+
+                46,
+
+                44,
+
                 425
+
             )
 
     };
@@ -224,5 +278,4 @@ function construireBibliotheque(signature){
 }
 
 module.exports=
-
-construireBibliotheque;
+    construireBibliotheque;

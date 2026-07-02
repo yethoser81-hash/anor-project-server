@@ -1,35 +1,25 @@
 /**
  * ============================================================
  * forgeRenderer.js
- * LIVRAISON 2 / 1
- * Structure générale + primitives + anneaux
+ * ANOR V4
+ * PARTIE 1
  * ============================================================
  */
 
 const BLEU = "#336699";
 
-const EPAISSEUR_ANNEAU = {
-    noyau: 225,
-    transition: 320,
-    peripherie: 425
-};
-
 const W = 1000;
 const H = 1000;
 const C = 500;
-
-/*==========================================================
-CANVAS
-==========================================================*/
 
 function getCtx(id){
 
     const canvas=document.getElementById(id);
 
-    const ctx=canvas.getContext("2d");
-
     canvas.width=W;
     canvas.height=H;
+
+    const ctx=canvas.getContext("2d");
 
     ctx.imageSmoothingEnabled=true;
     ctx.imageSmoothingQuality="high";
@@ -53,242 +43,6 @@ function dessinerFond(ctx){
 }
 
 /*==========================================================
-TEXTURE DETERMINISTE
-==========================================================*/
-
-function dessinerTexture(ctx,bibliotheque){
-
-    let graine=0;
-
-    bibliotheque.peripherie.forEach(e=>{
-
-        graine+=e.rotation;
-
-    });
-
-    for(let i=0;i<900;i++){
-
-        graine=(graine*9301+49297)%233280;
-
-        const angle=(graine/233280)*Math.PI*2;
-
-        graine=(graine*9301+49297)%233280;
-
-        const rayon=180+(graine/233280)*280;
-
-        const x=C+Math.cos(angle)*rayon;
-
-        const y=C+Math.sin(angle)*rayon;
-
-        ctx.beginPath();
-
-        ctx.arc(x,y,.45,0,Math.PI*2);
-
-        ctx.fillStyle="rgba(51,102,153,.05)";
-
-        ctx.fill();
-
-    }
-
-}
-
-/*==========================================================
-CERCLE
-==========================================================*/
-
-function cercle(ctx,r,w){
-
-    ctx.beginPath();
-
-    ctx.arc(C,C,r,0,Math.PI*2);
-
-    ctx.lineWidth=w;
-
-    ctx.strokeStyle=BLEU;
-
-    ctx.stroke();
-
-}
-
-/*==========================================================
-ANNEAUX
-==========================================================*/
-
-function dessinerAnneaux(ctx){
-
-    cercle(ctx,480,11);
-
-    cercle(ctx,466,1);
-
-    cercle(ctx,452,2);
-
-    cercle(ctx,437,1);
-
-    cercle(ctx,421,1);
-
-    cercle(ctx,404,.8);
-
-    cercle(ctx,388,.8);
-
-    cercle(ctx,371,.8);
-
-    cercle(ctx,354,.8);
-
-    cercle(ctx,338,.8);
-
-    cercle(ctx,320,.8);
-
-    cercle(ctx,302,.8);
-
-    cercle(ctx,284,.8);
-
-    cercle(ctx,266,.8);
-
-    cercle(ctx,248,.8);
-
-}
-
-/*==========================================================
-POINTILLES
-==========================================================*/
-
-function dessinerPointilles(ctx){
-
-    ctx.save();
-
-    ctx.setLineDash([2,4]);
-
-    ctx.beginPath();
-
-    ctx.arc(C,C,372,0,Math.PI*2);
-
-    ctx.lineWidth=.8;
-
-    ctx.strokeStyle=BLEU;
-
-    ctx.stroke();
-
-    ctx.restore();
-
-}
-
-/*==========================================================
-ROSETTE
-==========================================================*/
-
-function dessinerRosace(ctx){
-
-    ctx.save();
-
-    ctx.translate(C,C);
-
-    ctx.strokeStyle=BLEU;
-
-    ctx.lineWidth=.9;
-
-    for(let i=0;i<72;i++){
-
-        ctx.save();
-
-        ctx.rotate(i*Math.PI*2/72);
-
-        ctx.beginPath();
-
-        ctx.moveTo(0,182);
-
-        ctx.lineTo(0,205);
-
-        ctx.stroke();
-
-        ctx.restore();
-
-    }
-
-    ctx.restore();
-
-}
-
-/*==========================================================
-GUILLOCHE
-==========================================================*/
-
-function dessinerGuilloche(ctx){
-
-    ctx.beginPath();
-
-    for(let a=0;a<=Math.PI*2+.003;a+=.0025){
-
-        const r=
-
-            458+
-
-            Math.sin(a*21)*5+
-
-            Math.cos(a*11)*2+
-
-            Math.sin(a*53);
-
-        const x=C+Math.cos(a)*r;
-
-        const y=C+Math.sin(a)*r;
-
-        if(a===0)
-
-            ctx.moveTo(x,y);
-
-        else
-
-            ctx.lineTo(x,y);
-
-    }
-
-    ctx.strokeStyle=BLEU;
-
-    ctx.lineWidth=1;
-
-    ctx.stroke();
-
-}
-
-/*==========================================================
-MICRO RAYONS
-==========================================================*/
-
-function dessinerRayons(ctx){
-
-    ctx.strokeStyle="rgba(51,102,153,.10)";
-
-    ctx.lineWidth=.35;
-
-    for(let i=0;i<720;i++){
-
-        const a=i*Math.PI*2/720;
-
-        ctx.beginPath();
-
-        ctx.moveTo(
-
-            C+Math.cos(a)*210,
-
-            C+Math.sin(a)*210
-
-        );
-
-        ctx.lineTo(
-
-            C+Math.cos(a)*448,
-
-            C+Math.sin(a)*448
-
-        );
-
-        ctx.stroke();
-
-    }
-
-}
-
-/*==========================================================
 COULEURS
 ==========================================================*/
 
@@ -297,209 +51,258 @@ function couleur(index){
     switch(index){
 
         case 0:
-
             return "#336699";
 
         case 1:
+            return "#1F4F88";
 
-            return "#24507D";
+        case 2:
+            return "#4F7FB3";
 
         default:
-
-            return "#5A92C8";
+            return "#336699";
 
     }
 
 }
 
 /*==========================================================
-FORMES
+PRIMITIVES
 ==========================================================*/
 
-function dessinerPrimitive(ctx,item){
-
-    const t=item.taille;
+function primitiveRectangle(ctx,e){
 
     ctx.beginPath();
 
-    switch(item.forme){
+    ctx.rect(
 
-        case "rectangle":
+        -e.taille/2,
 
-            const h=t*(1.20+(item.famille||0)*0.18);
+        -e.taille,
 
-            ctx.rect(
+        e.taille,
 
-                -t*.22,
+        e.taille*2
 
-                -h/2,
-
-                t*.44,
-
-                h
-
-            );
-
-        break;
-
-        case "carre":
-
-            ctx.rect(-t/2,-t/2,t,t);
-
-        break;
-
-        case "cercle":
-
-            ctx.arc(0,0,t/2,0,Math.PI*2);
-
-        break;
-
-        case "triangle":
-
-            ctx.moveTo(0,-t);
-
-            ctx.lineTo(t,t);
-
-            ctx.lineTo(-t,t);
-
-            ctx.closePath();
-
-        break;
-
-        case "losange":
-
-            ctx.moveTo(0,-t);
-
-            ctx.lineTo(t,0);
-
-            ctx.lineTo(0,t);
-
-            ctx.lineTo(-t,0);
-
-            ctx.closePath();
-
-        break;
-
-        case "croix":
-
-            ctx.moveTo(-t,0);
-
-            ctx.lineTo(t,0);
-
-            ctx.moveTo(0,-t);
-
-            ctx.lineTo(0,t);
-
-        break;
-
-        case "barre_verticale":
-
-            ctx.rect(-t*.16,-t,t*.32,t*2);
-
-        break;
-
-        case "demi_cercle":
-
-            ctx.arc(
-
-                0,
-
-                0,
-
-                t*0.65,
-
-                Math.PI*0.15,
-
-                Math.PI*1.85
-
-            );
-
-        break;
-
-    }
+    );
 
 }
 
-/* Note: Anciennement dessinerPrimitive, renommé ici pour correspondre à ton intégration */
-function dessinerGlyphe(ctx, item) {
-    dessinerPrimitive(ctx, item);
+function primitiveCarre(ctx,e){
+
+    ctx.beginPath();
+
+    ctx.rect(
+
+        -e.taille/2,
+
+        -e.taille/2,
+
+        e.taille,
+
+        e.taille
+
+    );
+
+}
+
+function primitiveCercle(ctx,e){
+
+    ctx.beginPath();
+
+    ctx.arc(
+
+        0,
+
+        0,
+
+        e.taille/2,
+
+        0,
+
+        Math.PI*2
+
+    );
+
+}
+
+function primitiveTriangle(ctx,e){
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+
+        0,
+
+        -e.taille
+
+    );
+
+    ctx.lineTo(
+
+        e.taille,
+
+        e.taille
+
+    );
+
+    ctx.lineTo(
+
+        -e.taille,
+
+        e.taille
+
+    );
+
+    ctx.closePath();
+
+}
+
+function primitiveLosange(ctx,e){
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,-e.taille);
+
+    ctx.lineTo(e.taille,0);
+
+    ctx.lineTo(0,e.taille);
+
+    ctx.lineTo(-e.taille,0);
+
+    ctx.closePath();
+
+}
+
+function primitiveCroix(ctx,e){
+
+    ctx.beginPath();
+
+    ctx.moveTo(-e.taille,0);
+
+    ctx.lineTo(e.taille,0);
+
+    ctx.moveTo(0,-e.taille);
+
+    ctx.lineTo(0,e.taille);
+
+}
+
+function primitiveBarre(ctx,e){
+
+    ctx.beginPath();
+
+    ctx.rect(
+
+        -e.taille*0.18,
+
+        -e.taille,
+
+        e.taille*0.36,
+
+        e.taille*2
+
+    );
+
 }
 
 /*==========================================================
-DESSIN D'UN ELEMENT CRYPTO
+SELECTION
 ==========================================================*/
 
-function dessinerElement(ctx,item,angle){
+function dessinerPrimitive(ctx,e){
 
-    const rayon =
+    switch(e.forme){
 
-        item.rayon +
+        case "rectangle":
+            primitiveRectangle(ctx,e);
+        break;
 
-        item.offset +
+        case "carre":
+            primitiveCarre(ctx,e);
+        break;
 
-        (item.niveau || 0) * 8;
+        case "cercle":
+            primitiveCercle(ctx,e);
+        break;
 
-    const x =
+        case "triangle":
+            primitiveTriangle(ctx,e);
+        break;
 
-        C +
+        case "losange":
+            primitiveLosange(ctx,e);
+        break;
 
-        Math.cos(angle) * rayon;
+        case "croix":
+            primitiveCroix(ctx,e);
+        break;
 
-    const y =
-
-        C +
-
-        Math.sin(angle) * rayon;
-
-    ctx.save();
-
-    ctx.translate(x,y);
-
-    ctx.rotate(
-
-        angle +
-
-        item.rotation *
-
-        Math.PI / 180
-
-    );
-
-    ctx.rotate(
-
-        ((item.cluster || 1)-2)
-
-        *0.08
-
-    );
-
-    ctx.strokeStyle=
-
-        couleur(item.couleur);
-
-    ctx.fillStyle=
-
-        couleur(item.couleur);
-
-    ctx.lineWidth=
-
-        item.epaisseur;
-
-    if(item.miroir){
-
-        ctx.scale(-1,1);
+        case "barre_verticale":
+            primitiveBarre(ctx,e);
+        break;
 
     }
 
-    dessinerGlyphe(
+}
 
-        ctx,
+/*==========================================================
+DESSIN D'UNE PRIMITIVE
+==========================================================*/
 
-        item
+function dessinerElement(ctx,glyphe,element){
+
+    ctx.save();
+
+    ctx.translate(
+
+        element.x,
+
+        element.y
 
     );
 
-    if(item.plein){
+    ctx.rotate(
+
+        (element.rotation||0)
+
+        *
+
+        Math.PI
+
+        /
+
+        180
+
+    );
+
+    const primitive={
+
+        forme:element.forme,
+
+        taille:
+
+            element.taille
+
+            *
+
+            glyphe.taille
+
+            /
+
+            14
+
+    };
+
+    dessinerPrimitive(
+
+        ctx,
+
+        primitive
+
+    );
+
+    if(element.plein){
 
         ctx.fill();
 
@@ -516,7 +319,117 @@ function dessinerElement(ctx,item,angle){
 }
 
 /*==========================================================
-ANNEAU CRYPTO
+DESSIN D'UN GLYPHE COMPLET
+==========================================================*/
+
+function dessinerGlyphe(
+
+    ctx,
+
+    glyphe,
+
+    angle
+
+){
+
+    const rayon=
+
+        glyphe.rayon+
+
+        glyphe.offset;
+
+    const x=
+
+        C+
+
+        Math.cos(angle)
+
+        *
+
+        rayon;
+
+    const y=
+
+        C+
+
+        Math.sin(angle)
+
+        *
+
+        rayon;
+
+    ctx.save();
+
+    ctx.translate(
+
+        x,
+
+        y
+
+    );
+
+    ctx.rotate(
+
+        angle+
+
+        glyphe.rotation*
+
+        Math.PI/
+
+        180
+
+    );
+
+    if(glyphe.miroir){
+
+        ctx.scale(-1,1);
+
+    }
+
+    ctx.strokeStyle=
+
+        couleur(
+
+            glyphe.couleur
+
+        );
+
+    ctx.fillStyle=
+
+        couleur(
+
+            glyphe.couleur
+
+        );
+
+    ctx.lineWidth=
+
+        glyphe.epaisseur;
+
+    glyphe.elements.forEach(
+
+        element=>{
+
+            dessinerElement(
+
+                ctx,
+
+                glyphe,
+
+                element
+
+            );
+
+        }
+
+    );
+
+    ctx.restore();
+
+}
+
+/*==========================================================
+ANNEAU
 ==========================================================*/
 
 function dessinerAnneau(
@@ -529,77 +442,65 @@ function dessinerAnneau(
 
 ){
 
-    let angle =
+    let angle=
 
         angleDepart;
 
-    liste.forEach(item=>{
+    liste.forEach(
 
-        angle +=
+        glyphe=>{
 
-            (
+            angle+=
 
-                item.espacement ||
+                glyphe.espacement*
 
-                5
+                Math.PI/
 
-            ) *
+                180;
 
-            Math.PI/
+            for(
 
-            180;
+                let i=0;
 
-        const repetitions =
+                i<glyphe.cluster;
 
-            1 +
+                i++
 
-            (
+            ){
 
-                item.cluster ||
+                dessinerGlyphe(
 
-                0
+                    ctx,
 
-            );
+                    glyphe,
 
-        for(
+                    angle+
 
-            let i=0;
+                    i*0.018
 
-            i<repetitions;
+                );
 
-            i++
+            }
 
-        ){
-
-            dessinerElement(
-
-                ctx,
-
-                item,
-
-                angle +
-
-                i*.011
-
-            );
+            angle+=0.020;
 
         }
 
-        angle +=
-
-            item.taille
-
-            *.0035;
-
-    });
+    );
 
 }
 
 /*==========================================================
-ANNEAUX CRYPTOGRAPHIQUES
+BIBLIOTHEQUE COMPLETE
 ==========================================================*/
 
-function dessinerBibliotheque(ctx,bibliotheque){
+function dessinerBibliotheque(
+
+    ctx,
+
+    bibliotheque
+
+){
 
     dessinerAnneau(
 
@@ -607,7 +508,7 @@ function dessinerBibliotheque(ctx,bibliotheque){
 
         bibliotheque.noyau,
 
-        Math.PI/9
+        Math.PI/8
 
     );
 
@@ -634,36 +535,307 @@ function dessinerBibliotheque(ctx,bibliotheque){
 }
 
 /*==========================================================
-DOUBLE COURONNE CENTRALE
+ANNEAUX DECORATIFS
 ==========================================================*/
 
-function dessinerCouronneLogo(ctx){
+function cercle(ctx,r,epaisseur){
 
     ctx.beginPath();
 
-    ctx.arc(C,C,214,0,Math.PI*2);
+    ctx.arc(
 
-    ctx.lineWidth=3;
+        C,
+
+        C,
+
+        r,
+
+        0,
+
+        Math.PI*2
+
+    );
+
+    ctx.lineWidth=epaisseur;
 
     ctx.strokeStyle=BLEU;
 
     ctx.stroke();
 
+}
+
+function dessinerAnneauxDecoratifs(ctx){
+
+    [
+
+        [480,10],
+        [466,1],
+        [452,2],
+        [438,1],
+        [422,1],
+        [406,.8],
+        [390,.8],
+        [374,.8],
+        [358,.8],
+        [342,.8],
+        [326,.8],
+        [310,.8],
+        [294,.8],
+        [278,.8],
+        [262,.8],
+        [246,.8]
+
+    ].forEach(e=>{
+
+        cercle(
+
+            ctx,
+
+            e[0],
+
+            e[1]
+
+        );
+
+    });
+
+}
+
+/*==========================================================
+POINTILLES
+==========================================================*/
+
+function dessinerPointilles(ctx){
+
+    ctx.save();
+
+    ctx.setLineDash([2,4]);
+
     ctx.beginPath();
 
-    ctx.arc(C,C,206,0,Math.PI*2);
+    ctx.arc(
 
-    ctx.lineWidth=1;
+        C,
 
-    ctx.stroke();
+        C,
 
-    ctx.beginPath();
+        372,
 
-    ctx.arc(C,C,198,0,Math.PI*2);
+        0,
+
+        Math.PI*2
+
+    );
 
     ctx.lineWidth=.8;
 
+    ctx.strokeStyle=BLEU;
+
     ctx.stroke();
+
+    ctx.restore();
+
+}
+
+/*==========================================================
+ROSETTE
+==========================================================*/
+
+function dessinerRosace(ctx){
+
+    ctx.save();
+
+    ctx.translate(C,C);
+
+    ctx.strokeStyle=BLEU;
+
+    ctx.lineWidth=.9;
+
+    for(
+
+        let i=0;
+
+        i<72;
+
+        i++
+
+    ){
+
+        ctx.save();
+
+        ctx.rotate(
+
+            i*
+
+            Math.PI*
+
+            2/
+
+            72
+
+        );
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+
+            0,
+
+            182
+
+        );
+
+        ctx.lineTo(
+
+            0,
+
+            205
+
+        );
+
+        ctx.stroke();
+
+        ctx.restore();
+
+    }
+
+    ctx.restore();
+
+}
+
+/*==========================================================
+GUILLOCHE
+==========================================================*/
+
+function dessinerGuilloche(ctx){
+
+    ctx.beginPath();
+
+    for(
+
+        let a=0;
+
+        a<=Math.PI*2+.003;
+
+        a+=.0025
+
+    ){
+
+        const r=
+
+            458+
+
+            Math.sin(a*21)*5+
+
+            Math.cos(a*11)*2+
+
+            Math.sin(a*53);
+
+        const x=
+
+            C+
+
+            Math.cos(a)*r;
+
+        const y=
+
+            C+
+
+            Math.sin(a)*r;
+
+        if(a===0)
+
+            ctx.moveTo(x,y);
+
+        else
+
+            ctx.lineTo(x,y);
+
+    }
+
+    ctx.lineWidth=1;
+
+    ctx.strokeStyle=BLEU;
+
+    ctx.stroke();
+
+}
+
+/*==========================================================
+MICRO RAYONS
+==========================================================*/
+
+function dessinerRayons(ctx){
+
+    ctx.strokeStyle=
+
+        "rgba(51,102,153,.10)";
+
+    ctx.lineWidth=.35;
+
+    for(
+
+        let i=0;
+
+        i<720;
+
+        i++
+
+    ){
+
+        const a=
+
+            i*
+
+            Math.PI*
+
+            2/
+
+            720;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+
+            C+
+
+            Math.cos(a)*210,
+
+            C+
+
+            Math.sin(a)*210
+
+        );
+
+        ctx.lineTo(
+
+            C+
+
+            Math.cos(a)*448,
+
+            C+
+
+            Math.sin(a)*448
+
+        );
+
+        ctx.stroke();
+
+    }
+
+}
+
+/*==========================================================
+DOUBLE COURONNE DU LOGO
+==========================================================*/
+
+function dessinerCouronneLogo(ctx){
+
+    cercle(ctx,214,3);
+
+    cercle(ctx,206,1);
+
+    cercle(ctx,198,.8);
 
 }
 
@@ -705,7 +877,9 @@ async function chargerLogo(ctx){
 
         );
 
-    }else{
+    }
+
+    else{
 
         ctx.fillStyle=BLEU;
 
@@ -737,17 +911,37 @@ function dessinerPerles(ctx){
 
     ctx.fillStyle=BLEU;
 
-    for(let i=0;i<240;i++){
+    for(
 
-        const a=i*Math.PI*2/240;
+        let i=0;
+
+        i<240;
+
+        i++
+
+    ){
+
+        const a=
+
+            i*
+
+            Math.PI*
+
+            2/
+
+            240;
 
         ctx.beginPath();
 
         ctx.arc(
 
-            C+Math.cos(a)*468,
+            C+
 
-            C+Math.sin(a)*468,
+            Math.cos(a)*468,
+
+            C+
+
+            Math.sin(a)*468,
 
             1.05,
 
@@ -764,26 +958,56 @@ function dessinerPerles(ctx){
 }
 
 /*==========================================================
-MICRO PERLES INTERNES
+MICRO PERLES
 ==========================================================*/
 
 function dessinerPerlesInternes(ctx){
 
-    ctx.fillStyle="rgba(51,102,153,.35)";
+    ctx.fillStyle=
 
-    [235,280,325].forEach(r=>{
+        "rgba(51,102,153,.35)";
 
-        for(let i=0;i<180;i++){
+    [
 
-            const a=i*Math.PI*2/180;
+        235,
+
+        280,
+
+        325
+
+    ].forEach(r=>{
+
+        for(
+
+            let i=0;
+
+            i<180;
+
+            i++
+
+        ){
+
+            const a=
+
+                i*
+
+                Math.PI*
+
+                2/
+
+                180;
 
             ctx.beginPath();
 
             ctx.arc(
 
-                C+Math.cos(a)*r,
+                C+
 
-                C+Math.sin(a)*r,
+                Math.cos(a)*r,
+
+                C+
+
+                Math.sin(a)*r,
 
                 .5,
 
@@ -800,8 +1024,123 @@ function dessinerPerlesInternes(ctx){
     });
 
 }
+
 /*==========================================================
-FONCTIONS DE FINITION
+HALO
+==========================================================*/
+
+function dessinerHalo(ctx){
+
+    const g=
+
+        ctx.createRadialGradient(
+
+            C,
+
+            C,
+
+            120,
+
+            C,
+
+            C,
+
+            300
+
+        );
+
+    g.addColorStop(
+
+        0,
+
+        "rgba(255,255,255,0)"
+
+    );
+
+    g.addColorStop(
+
+        .55,
+
+        "rgba(51,102,153,.05)"
+
+    );
+
+    g.addColorStop(
+
+        1,
+
+        "rgba(255,255,255,0)"
+
+    );
+
+    ctx.fillStyle=g;
+
+    ctx.beginPath();
+
+    ctx.arc(
+
+        C,
+
+        C,
+
+        300,
+
+        0,
+
+        Math.PI*2
+
+    );
+
+    ctx.fill();
+
+}
+
+/*==========================================================
+MICRO CERCLAGES
+==========================================================*/
+
+function dessinerMicroCercles(ctx){
+
+    ctx.strokeStyle=
+
+        "rgba(51,102,153,.18)";
+
+    ctx.lineWidth=.35;
+
+    for(
+
+        let r=255;
+
+        r<435;
+
+        r+=22
+
+    ){
+
+        ctx.beginPath();
+
+        ctx.arc(
+
+            C,
+
+            C,
+
+            r,
+
+            0,
+
+            Math.PI*2
+
+        );
+
+        ctx.stroke();
+
+    }
+
+}
+
+/*==========================================================
+REPERES CARDINAUX
 ==========================================================*/
 
 function dessinerRepereNord(ctx){
@@ -814,17 +1153,45 @@ function dessinerRepereNord(ctx){
 
     ctx.lineWidth=2;
 
-    for(let i=0;i<4;i++){
+    for(
+
+        let i=0;
+
+        i<4;
+
+        i++
+
+    ){
 
         ctx.save();
 
-        ctx.rotate(i*Math.PI/2);
+        ctx.rotate(
+
+            i*
+
+            Math.PI/
+
+            2
+
+        );
 
         ctx.beginPath();
 
-        ctx.moveTo(0,-478);
+        ctx.moveTo(
 
-        ctx.lineTo(0,-455);
+            0,
+
+            -478
+
+        );
+
+        ctx.lineTo(
+
+            0,
+
+            -455
+
+        );
 
         ctx.stroke();
 
@@ -837,59 +1204,7 @@ function dessinerRepereNord(ctx){
 }
 
 /*==========================================================
-HALO
-==========================================================*/
-
-function dessinerHalo(ctx){
-
-    const g=ctx.createRadialGradient(
-
-        C,C,120,
-
-        C,C,300
-
-    );
-
-    g.addColorStop(0,"rgba(255,255,255,0)");
-
-    g.addColorStop(.55,"rgba(51,102,153,.05)");
-
-    g.addColorStop(1,"rgba(255,255,255,0)");
-
-    ctx.fillStyle=g;
-
-    ctx.beginPath();
-
-    ctx.arc(C,C,300,0,Math.PI*2);
-
-    ctx.fill();
-
-}
-
-/*==========================================================
-MICRO CERCLAGE
-==========================================================*/
-
-function dessinerMicroCercles(ctx){
-
-    ctx.strokeStyle="rgba(51,102,153,.20)";
-
-    ctx.lineWidth=.35;
-
-    for(let r=255;r<435;r+=22){
-
-        ctx.beginPath();
-
-        ctx.arc(C,C,r,0,Math.PI*2);
-
-        ctx.stroke();
-
-    }
-
-}
-
-/*==========================================================
-FINITIONS
+FINITION
 ==========================================================*/
 
 function dessinerFinition(ctx){
@@ -908,17 +1223,27 @@ MOTEUR PRINCIPAL
 
 async function dessinerSceauPremium(bibliotheque){
 
-    const ctx=getCtx("sceauCanvas");
+    const ctx=
 
-    ctx.clearRect(0,0,W,H);
+        getCtx("sceauCanvas");
+
+    ctx.clearRect(
+
+        0,
+
+        0,
+
+        W,
+
+        H
+
+    );
 
     dessinerFond(ctx);
 
-    dessinerTexture(ctx,bibliotheque);
-
     dessinerGuilloche(ctx);
 
-    dessinerAnneaux(ctx);
+    dessinerAnneauxDecoratifs(ctx);
 
     dessinerPointilles(ctx);
 
@@ -940,9 +1265,9 @@ async function dessinerSceauPremium(bibliotheque){
 
     await chargerLogo(ctx);
 
-    /* Logo toujours au-dessus */
+    ctx.globalCompositeOperation=
 
-    ctx.globalCompositeOperation="source-over";
+        "source-over";
 
     dessinerFinition(ctx);
 
