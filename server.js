@@ -1,3 +1,4 @@
+
 /**
  * ============================================================
  * server.js
@@ -298,12 +299,12 @@ function scoreGlyphes(glyphesIA, glyphesDB){
     let bons=0;
     ["noyau","transition","peripherie"].forEach(zone=>{
         if(!glyphesIA[zone] || !glyphesDB[zone]){ return; }
-        const ia=glyphesIA[zone].formes;
-        const db=glyphesDB[zone].formes;
+        const ia=glyphesIA[zone];
+        const db=glyphesDB[zone];
         const longueur=Math.min(ia.length, db.length);
         for(let i=0; i<longueur; i++){
             total++;
-            if(ia[i].forme===db[i].forme){ bons++; }
+            if(ia[i].nom===db[i].nom){ bons++; }
         }
     });
     if(total===0){ return null; }
@@ -316,8 +317,8 @@ function scoreOrientation(glyphesIA,glyphesDB){
     let score=0;
     ["noyau","transition","peripherie"].forEach(zone=>{
         if(!glyphesIA[zone] || !glyphesDB[zone]){ return; }
-        const ia=glyphesIA[zone].formes;
-        const db=glyphesDB[zone].formes;
+        const ia=glyphesIA[zone];
+        const db=glyphesDB[zone];
         const longueur=Math.min(ia.length, db.length);
         for(let i=0; i<longueur; i++){
             total++;
@@ -337,8 +338,8 @@ function scoreCluster(glyphesIA,glyphesDB){
     let bons=0;
     ["noyau","transition","peripherie"].forEach(zone=>{
         if(!glyphesIA[zone] || !glyphesDB[zone]){ return; }
-        const ia= glyphesIA[zone].formes;
-        const db= glyphesDB[zone].formes;
+        const ia= glyphesIA[zone];
+        const db= glyphesDB[zone];
         const longueur=Math.min(ia.length, db.length);
         for(let i=0; i<longueur; i++){
             total++;
@@ -392,69 +393,200 @@ function extraireSignatureViaPython(imageBuffer) {
     });
 }
 
-function genererSceauHD(bibliotheque) {
-    const canvas = createCanvas(1000, 1000);
-    const ctx = canvas.getContext("2d");
+function genererSceauHD(bibliotheque){
 
-    // fond
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, 1000, 1000);
+    const canvas=createCanvas(1000,1000);
 
-    // cercle principal
-    ctx.strokeStyle = "#000";
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.arc(500, 500, 420, 0, Math.PI * 2);
-    ctx.stroke();
+    const ctx=canvas.getContext("2d");
 
-    function drawZone(zone, radius, color) {
-        if (!bibliotheque || !bibliotheque[zone]) return;
+    ctx.fillStyle="#ffffff";
+    ctx.fillRect(0,0,1000,1000);
 
-        const formes = bibliotheque[zone].formes || [];
-        const step = (Math.PI * 2) / formes.length;
+    function dessinerZone(liste){
 
-        formes.forEach((f, i) => {
-            const angle = i * step;
+        if(!Array.isArray(liste)) return;
 
-            const x = 500 + Math.cos(angle) * radius;
-            const y = 500 + Math.sin(angle) * radius;
+        const anglePas=Math.PI*2/liste.length;
+
+        liste.forEach((glyphe,index)=>{
+
+            const angle=index*anglePas;
+
+            const rayon=glyphe.rayon;
+
+            const x=
+                500+
+                Math.cos(angle)*rayon;
+
+            const y=
+                500+
+                Math.sin(angle)*rayon;
 
             ctx.save();
-            ctx.translate(x, y);
-            ctx.rotate((f.rotation || 0) * Math.PI / 180);
 
-            ctx.fillStyle = color;
+            ctx.translate(x,y);
 
-            switch (f.forme) {
-                case "cercle":
-                    ctx.beginPath();
-                    ctx.arc(0, 0, 10, 0, Math.PI * 2);
-                    ctx.fill();
-                    break;
+            ctx.rotate(
+                angle+
+                glyphe.rotation*
+                Math.PI/180
+            );
 
-                case "carre":
-                    ctx.fillRect(-10, -10, 20, 20);
-                    break;
+            ctx.strokeStyle="#336699";
+            ctx.fillStyle="#336699";
+            ctx.lineWidth=glyphe.epaisseur||1;
 
-                case "triangle":
-                    ctx.beginPath();
-                    ctx.moveTo(0, -10);
-                    ctx.lineTo(10, 10);
-                    ctx.lineTo(-10, 10);
-                    ctx.closePath();
-                    ctx.fill();
-                    break;
+            if(glyphe.miroir){
+
+                ctx.scale(-1,1);
+
             }
 
+            glyphe.elements.forEach(e=>{
+
+                ctx.save();
+
+                ctx.translate(e.x,e.y);
+
+                ctx.rotate(
+                    (e.rotation||0)
+                    *
+                    Math.PI
+                    /
+                    180
+                );
+
+                switch(e.forme){
+
+                    case "rectangle":
+
+                        ctx.beginPath();
+
+                        ctx.rect(
+                            -e.taille/2,
+                            -e.taille,
+                            e.taille,
+                            e.taille*2
+                        );
+
+                    break;
+
+                    case "carre":
+
+                        ctx.beginPath();
+
+                        ctx.rect(
+                            -e.taille/2,
+                            -e.taille/2,
+                            e.taille,
+                            e.taille
+                        );
+
+                    break;
+
+                    case "cercle":
+
+                        ctx.beginPath();
+
+                        ctx.arc(
+                            0,
+                            0,
+                            e.taille/2,
+                            0,
+                            Math.PI*2
+                        );
+
+                    break;
+
+                    case "triangle":
+
+                        ctx.beginPath();
+
+                        ctx.moveTo(0,-e.taille);
+
+                        ctx.lineTo(e.taille,e.taille);
+
+                        ctx.lineTo(-e.taille,e.taille);
+
+                        ctx.closePath();
+
+                    break;
+
+                    case "losange":
+
+                        ctx.beginPath();
+
+                        ctx.moveTo(0,-e.taille);
+
+                        ctx.lineTo(e.taille,0);
+
+                        ctx.lineTo(0,e.taille);
+
+                        ctx.lineTo(-e.taille,0);
+
+                        ctx.closePath();
+
+                    break;
+
+                    case "croix":
+
+                        ctx.beginPath();
+
+                        ctx.moveTo(-e.taille,0);
+
+                        ctx.lineTo(e.taille,0);
+
+                        ctx.moveTo(0,-e.taille);
+
+                        ctx.lineTo(0,e.taille);
+
+                    break;
+
+                    case "barre_verticale":
+
+                        ctx.beginPath();
+
+                        ctx.rect(
+                            -e.taille*0.15,
+                            -e.taille,
+                            e.taille*0.30,
+                            e.taille*2
+                        );
+
+                    break;
+
+                }
+
+                if(e.plein){
+
+                    ctx.fill();
+
+                }
+
+                else{
+
+                    ctx.stroke();
+
+                }
+
+                ctx.restore();
+
+            });
+
             ctx.restore();
+
         });
+
     }
 
-    drawZone("noyau", 120, "#000");
-    drawZone("transition", 220, "#1e3799");
-    drawZone("peripherie", 320, "#ce1126");
+    dessinerZone(bibliotheque.noyau);
+
+    dessinerZone(bibliotheque.transition);
+
+    dessinerZone(bibliotheque.peripherie);
 
     return canvas.toBuffer("image/png");
+
 }
 
 
@@ -484,11 +616,10 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
         let meilleurMatch = null;
         let scoreFinalMax = 0;
         let meilleurScoreBits = 0;
-        let meilleurScoreGraphique = 0;
+        let scoreGraphique = 0;
 
         for(const produit of produits){
             let scoreBits = 0;
-            let scoreGraphique = 0;
 
             // 1 - COMPARAISON BITS
             const dN = getHammingDistance(noyau, produit.segment_noyau);
@@ -499,24 +630,64 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
 
             // 2 - COMPARAISON GLYPHES
             try{
-                const bibliothequeDB = typeof produit.bibliotheque_formes === 'string' 
-                    ? JSON.parse(produit.bibliotheque_formes) 
-                    : produit.bibliotheque_formes;
-                const bibliothequeIA = signatureExtraite.glyphes;
+                const bibliothequeDB=
+                    typeof produit.bibliotheque_formes==="string"
+                    ?JSON.parse(produit.bibliotheque_formes)
+                    :produit.bibliotheque_formes;
+
+                const bibliothequeIA=
+                    signatureExtraite.glyphes;
+
                 let total=0;
+
                 let ok=0;
 
                 ["noyau","transition","peripherie"].forEach(zone=>{
-                    const a = bibliothequeDB[zone] || [];
-                    const b = bibliothequeIA[zone] || [];
-                    const limite = Math.min(a.length, b.length);
-                    for(let i=0; i<limite; i++){
+
+                    const db=bibliothequeDB[zone]||[];
+
+                    const ia=bibliothequeIA[zone]||[];
+
+                    const limite=Math.min(db.length,ia.length);
+
+                    for(let i=0;i<limite;i++){
+
                         total++;
-                        if(a[i].glyphe === b[i].glyphe){ ok++; }
+
+                        if(
+
+                            db[i].nom===ia[i].nom
+
+                        ){
+
+                            ok++;
+
+                        }
+
                     }
+
                 });
-                if(total){ scoreGraphique = (ok/total) * 100; }
-            } catch(e){ scoreGraphique = 0; }
+
+                scoreGraphique=
+
+                    total
+
+                    ?
+
+                    (ok/total)*100
+
+                    :
+
+                    0;
+
+            }
+            catch(e){
+
+                console.log(e);
+
+                scoreGraphique=0;
+
+            }
 
             // SCORE GLOBAL
             const scoreFinal = (scoreBits * 0.70) + (scoreGraphique * 0.30);
@@ -525,7 +696,6 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
                 scoreFinalMax = scoreFinal;
                 meilleurMatch = produit;
                 meilleurScoreBits = scoreBits;
-                meilleurScoreGraphique = scoreGraphique;
             }
         }
 
@@ -539,7 +709,7 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
 
                 score_bits: Number(meilleurScoreBits.toFixed(2)),
 
-                score_graphique: Number(meilleurScoreGraphique.toFixed(2)),
+                score_graphique: Number(scoreGraphique.toFixed(2)),
 
                 verification: new Date().toISOString(),
 
