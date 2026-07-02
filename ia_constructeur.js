@@ -7,6 +7,7 @@
  */
 
 const GLYPHES = require("./forge/bibliotheque_glyphes");
+console.log("GLYPHES =", Array.isArray(GLYPHES), GLYPHES.length);
 
 /*==========================================================
 UTILITAIRES
@@ -60,18 +61,23 @@ function construireGlyphe(
 
     const valeur=bitsToInt(bloc);
 
-    const modele=
-        choixGlyphes(valeur);
+    const modele = choixGlyphes(valeur);
 
-    return{
+    if (!modele) {
+        throw new Error(
+            `Glyphe introuvable (index=${index}, valeur=${valeur}, totalGlyphes=${GLYPHES.length})`
+        );
+    }
 
-        id:index,
+    return {
+
+        id: index,
 
         modele,
 
-        nom:modele.nom,
+        nom: modele.nom,
 
-        elements:JSON.parse(
+        elements: JSON.parse(
             JSON.stringify(
                 modele.elements
             )

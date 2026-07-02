@@ -1,4 +1,3 @@
-
 /**
  * ============================================================
  * server.js
@@ -250,7 +249,7 @@ app.post('/api/produit/enregistrer', upload.fields([
             segment_noyau: signatureBinaire.substring(0, 20),
             segment_transition: signatureBinaire.substring(20, 50),
             segment_peripherie: signatureBinaire.substring(50, 90),
-            bibliotheque_formes: bibliotheque,
+            bibliotheque_formes: JSON.stringify(bibliotheque),
             version_sceau: "3.0"
         };
 
