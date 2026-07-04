@@ -43,7 +43,7 @@ const upload = multer({
 });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const ANOR_SECRET = process.env.ANOR_SECRET;
+const ANOR_SECRET = process.env.PROCESS_ENV.ANOR_SECRET;
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
@@ -206,6 +206,7 @@ app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, 
             lot, 
             nonce,
             pays_origine,
+            segment_noyau: lot, // Ajout du segment requis
             code_sceau: signature,
             bibliotheque_formes: JSON.stringify(bibliotheque),
             visuel_url: req.files?.visuel?.[0]?.originalname || null,
