@@ -206,7 +206,6 @@ app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, 
             lot, 
             nonce,
             pays_origine,
-            segment_noyau: lot, // Ajout du segment requis
             code_sceau: signature,
             bibliotheque_formes: JSON.stringify(bibliotheque),
             visuel_url: req.files?.visuel?.[0]?.originalname || null,
