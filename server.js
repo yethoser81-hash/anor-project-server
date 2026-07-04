@@ -43,7 +43,7 @@ const upload = multer({
 });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
-const ANOR_SECRET = process.env.PROCESS_ENV.ANOR_SECRET;
+const ANOR_SECRET = process.env.ANOR_SECRET;
 
 app.use(cors({ origin: '*' }));
 app.use(express.json());
