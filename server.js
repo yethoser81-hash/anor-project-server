@@ -201,7 +201,11 @@ app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, 
         const bibliotheque = decodeur.bitsVersBibliotheque(signature);
 
         const { error } = await supabase.from('sya_produit_certifie').insert([{
-            nom_produit, nom_producteur, lot, nonce,
+            nom_produit, 
+            nom_producteur, 
+            lot, 
+            nonce,
+            pays_origine,
             code_sceau: signature,
             bibliotheque_formes: JSON.stringify(bibliotheque),
             visuel_url: req.files?.visuel?.[0]?.originalname || null,

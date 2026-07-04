@@ -6,8 +6,6 @@
  * ==========================================================
  */
 
-const GLYPHES = require("./bibliotheque_glyphes");
-
 /**
  * ==========================================================
  * OUTIL CANVAS
@@ -15,12 +13,15 @@ const GLYPHES = require("./bibliotheque_glyphes");
  */
 
 class Renderer {
-    constructor(canvas) {
+    constructor(canvas, bibliotheque = null) {
         this.canvas = canvas;
         this.ctx = canvas.getContext("2d");
 
         this.centerX = canvas.width / 2;
         this.centerY = canvas.height / 2;
+        
+        // Utilise la bibliothèque passée en argument ou tente de charger via require pour le backend
+        this.GLYPHES = bibliotheque || (typeof require !== 'undefined' ? require("./bibliotheque_glyphes") : []);
     }
 
     clear() {
@@ -199,7 +200,7 @@ class Renderer {
      */
 
     renderCenter(nom) {
-        const g = GLYPHES.find(g => g.nom === nom);
+        const g = this.GLYPHES.find(g => g.nom === nom);
         this.renderGlyphe(g);
     }
 }
@@ -210,4 +211,6 @@ class Renderer {
  * ==========================================================
  */
 
-module.exports = Renderer;
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Renderer;
+}
