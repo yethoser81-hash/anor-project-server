@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>ANOR | Map Surveillance</title>
+
+<link
+rel="stylesheet"
+href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<link
+rel="stylesheet"
+href="./map.css"
+/>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+    <div class="brand">
+
+        <img
+        src="../assets/logo_anor.png"
+        class="logo"
+        >
+
+        <h2>ANOR</h2>
+
+        <span>MAP SURVEILLANCE</span>
+
+    </div>
+
+    <div class="menu">
+
+        <a href="../dashboard/index.html">
+            🏠 Dashboard
+        </a>
+
+        <a href="../forge/index.html">
+            🏭 Forge
+        </a>
+
+        <a href="../registry/index.html">
+            📋 Registry
+        </a>
+
+        <a
+        class="active"
+        href="#">
+            🗺️ Surveillance
+        </a>
+
+        <a href="../product_audit/index.html">
+            📦 Product Audit
+        </a>
+
+        <a href="../intelligence/index.html">
+            🧠 Intelligence
+        </a>
+
+        <a href="../verification/index.html">
+            ✔ Verification
+        </a>
+
+    </div>
+
+</div>
+
+<div class="content">
+
+<header>
+
+<h1>
+
+Carte Nationale de Surveillance
+
+</h1>
+
+<div class="live">
+
+<div class="dot"></div>
+
+SURVEILLANCE ACTIVE
+
+</div>
+
+</header>
+
+<section class="stats">
+
+<div class="card">
+
+<h3 id="todayScans">
+
+0
+
+</h3>
+
+<p>
+
+Scans Aujourd'hui
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h3 id="activeInspectors">
+
+0
+
+</h3>
+
+<p>
+
+Inspecteurs actifs
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h3 id="suspicious">
+
+0
+
+</h3>
+
+<p>
+
+Alertes IA
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h3 id="verifiedProducts">
+
+0
+
+</h3>
+
+<p>
+
+Produits vérifiés
+
+</p>
+
+</div>
+
+</section>
+
+<section class="toolbar">
+
+<div class="filters">
+
+<select id="filterRegion">
+
+<option value="">
+
+Toutes les régions
+
+</option>
+
+<option>
+
+Centre
+
+</option>
+
+<option>
+
+Littoral
+
+</option>
+
+<option>
+
+Nord
+
+</option>
+
+<option>
+
+Sud
+
+</option>
+
+<option>
+
+Est
+
+</option>
+
+<option>
+
+Ouest
+
+</option>
+
+<option>
+
+Adamaoua
+
+</option>
+
+<option>
+
+Nord-Ouest
+
+</option>
+
+<option>
+
+Sud-Ouest
+
+</option>
+
+<option>
+
+Extrême-Nord
+
+</option>
+
+</select>
+
+<select id="filterStatus">
+
+<option value="">
+
+Tous les statuts
+
+</option>
+
+<option value="verified">
+
+Authentique
+
+</option>
+
+<option value="warning">
+
+Suspect
+
+</option>
+
+<option value="fraud">
+
+Fraude
+
+</option>
+
+</select>
+
+<input
+type="date"
+id="dateStart"
+>
+
+<input
+type="date"
+id="dateEnd"
+>
+
+<button
+id="refreshMap"
+>
+
+Actualiser
+
+</button>
+
+</div>
+
+</section>
+
+<section class="workspace">
+
+<div class="mapPanel">
+
+<div id="map"></div>
+
+</div>
+
+<div class="rightPanel">
+
+<div class="panel">
+
+<h2>
+
+Activité Temps Réel
+
+</h2>
+
+<div
+id="liveFeed"
+class="feed"
+>
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Dernières Alertes
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>
+
+Heure
+
+</th>
+
+<th>
+
+Ville
+
+</th>
+
+<th>
+
+Type
+
+</th>
+
+</tr>
+
+</thead>
+
+<tbody
+id="alertsTable"
+>
+
+</tbody>
+
+</table>
+
+</div>
+<div class="panel">
+
+<h2>
+
+Scans Récents
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>ID</th>
+
+<th>Produit</th>
+
+<th>Ville</th>
+
+<th>Résultat</th>
+
+</tr>
+
+</thead>
+
+<tbody id="scanTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Répartition des Vérifications
+
+</h2>
+
+<canvas
+id="scanChart"
+height="180">
+</canvas>
+
+</div>
+
+</div>
+
+</section>
+
+<section class="bottom">
+
+<div class="panel full">
+
+<h2>
+
+Historique National des Vérifications
+
+</h2>
+
+<table class="history">
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Heure</th>
+
+<th>Produit</th>
+
+<th>Sceau</th>
+
+<th>Entreprise</th>
+
+<th>Ville</th>
+
+<th>Région</th>
+
+<th>Inspecteur</th>
+
+<th>Résultat</th>
+
+</tr>
+
+</thead>
+
+<tbody
+id="historyTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+<footer>
+
+ANOR © 2026 • Plateforme Nationale de Surveillance • Version 5
+
+</footer>
+
+</div>
+
+<script
+src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+
+<script
+src="https://cdn.jsdelivr.net/npm/chart.js">
+</script>
+
+<script
+src="./map.js">
+</script>
+
+<script>
+
+const API =
+location.hostname==="localhost" ||
+location.hostname==="127.0.0.1"
+
+?
+
+"http://localhost:3000/api"
+
+:
+
+"https://anor-back.onrender.com/api";
+
+window.API=API;
+
+</script>
+</div>
+
+<script>
+
+window.addEventListener("DOMContentLoaded",async()=>{
+
+    if(typeof initMap==="function"){
+        initMap();
+    }
+
+    if(typeof loadDashboard==="function"){
+        await loadDashboard();
+    }
+
+    document
+    .getElementById("refreshMap")
+    .addEventListener("click",async()=>{
+
+        if(typeof reloadMap==="function"){
+            await reloadMap();
+        }
+
+    });
+
+});
+
+</script>
+
+</body>
+</html>

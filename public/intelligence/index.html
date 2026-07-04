@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>ANOR | Intelligence Center</title>
+
+<link rel="stylesheet" href="./intelligence.css">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+<div class="brand">
+
+<img
+src="../assets/logo_anor.png"
+class="logo">
+
+<h2>ANOR</h2>
+
+<span>INTELLIGENCE CENTER</span>
+
+</div>
+
+<div class="menu">
+
+<a href="../dashboard/index.html">
+🏠 Dashboard
+</a>
+
+<a href="../forge/index.html">
+🏭 Forge
+</a>
+
+<a href="../registry/index.html">
+📋 Registry
+</a>
+
+<a href="../map_surveillance/index.html">
+🗺️ Surveillance
+</a>
+
+<a href="../product_audit/index.html">
+📦 Product Audit
+</a>
+
+<a class="active" href="#">
+🧠 Intelligence
+</a>
+
+<a href="../verification/index.html">
+✔ Verification
+</a>
+
+</div>
+
+</div>
+
+<div class="content">
+
+<header>
+
+<div>
+
+<h1>Centre National d'Intelligence</h1>
+
+<p>
+
+Analyse prédictive • Corrélation • Détection IA • Contrefaçon Nationale
+
+</p>
+
+</div>
+
+<div class="live">
+
+<div class="dot"></div>
+
+IA ACTIVE
+
+</div>
+
+</header>
+
+<section class="stats">
+
+<div class="card">
+
+<h2 id="riskScore">0%</h2>
+
+<p>Indice National de Risque</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="fraudPrediction">0</h2>
+
+<p>Fraudes prédites</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="clusters">0</h2>
+
+<p>Clusters détectés</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="activeModels">7</h2>
+
+<p>Moteurs IA actifs</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="priorityCity">-</h2>
+
+<p>Ville prioritaire</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="confidenceScore">0%</h2>
+
+<p>Confiance IA</p>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Evolution Nationale du Risque
+
+</h2>
+
+<canvas id="riskChart"></canvas>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Répartition des Alertes
+
+</h2>
+
+<canvas id="distributionChart"></canvas>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Top Zones à Surveiller
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Ville</th>
+
+<th>Indice</th>
+
+</tr>
+
+</thead>
+
+<tbody id="zoneTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Flux IA Temps Réel
+
+</h2>
+
+<div
+class="alerts"
+id="liveAlerts">
+
+</div>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Prédictions de Contrefaçon
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Produit</th>
+
+<th>Entreprise</th>
+
+<th>Ville</th>
+
+<th>Probabilité</th>
+
+<th>Niveau</th>
+
+</tr>
+
+</thead>
+
+<tbody id="predictionTable">
+
+    </tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Analyse IA Nationale
+
+</h2>
+
+<div
+class="analysis"
+id="aiAnalysis">
+
+Chargement...
+
+</div>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel">
+
+<h2>
+
+Top 10 Sceaux Vérifiés
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Sceau</th>
+
+<th>Scans</th>
+
+</tr>
+
+</thead>
+
+<tbody id="sealTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Entreprises à Risque
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Entreprise</th>
+
+<th>Indice</th>
+
+</tr>
+
+</thead>
+
+<tbody id="companyTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Produits les plus Suspects
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Produit</th>
+
+<th>Indice</th>
+
+</tr>
+
+</thead>
+
+<tbody id="productTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Répartition Régionale
+
+</h2>
+
+<canvas id="regionChart"></canvas>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Historique National des Décisions IA
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Produit</th>
+
+<th>Entreprise</th>
+
+<th>Ville</th>
+
+<th>Algorithme</th>
+
+<th>Décision</th>
+
+<th>Confiance</th>
+
+</tr>
+
+</thead>
+
+<tbody id="historyTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Recommandations IA
+
+</h2>
+
+<div
+id="recommendations"
+class="recommendations">
+
+</div>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Timeline des Alertes Nationales
+
+</h2>
+
+<div
+id="timeline"
+class="timeline">
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Routes Suspectes
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Origine</th>
+
+<th>Destination</th>
+
+<th>Risque</th>
+
+</tr>
+
+</thead>
+
+<tbody id="routeTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel">
+
+<h2>
+
+Actions Rapides
+
+</h2>
+
+<div class="actions">
+
+<button id="refreshIA">
+
+Actualiser
+
+</button>
+
+<button id="exportPDF">
+
+Exporter PDF
+
+</button>
+
+<button id="exportExcel">
+
+Exporter Excel
+
+</button>
+
+<button id="generateInvestigation">
+
+Créer Dossier d'Enquête
+
+</button>
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Etat des Moteurs IA
+
+</h2>
+
+<div class="models">
+
+<div class="model">
+
+<h3>Behaviour AI</h3>
+
+<span id="modelBehaviour">
+
+ACTIF
+
+</span>
+
+</div>
+
+<div class="model">
+
+<h3>Seal Neural Engine</h3>
+
+<span id="modelSeal">
+
+ACTIF
+
+</span>
+
+</div>
+
+<div class="model">
+
+<h3>Fraud Detector</h3>
+
+<span id="modelFraud">
+
+ACTIF
+
+</span>
+
+</div>
+
+<div class="model">
+
+<h3>Cluster AI</h3>
+
+<span id="modelCluster">
+
+ACTIF
+
+</span>
+
+</div>
+
+<div class="model">
+
+<h3>Predictive Engine</h3>
+
+<span id="modelPredictive">
+
+ACTIF
+
+</span>
+
+</div>
+
+<div class="model">
+
+<h3>Correlation Engine</h3>
+
+<span id="modelCorrelation">
+
+ACTIF
+
+</span>
+
+</div>
+
+<div class="model">
+
+<h3>Geo Intelligence</h3>
+
+<span id="modelGeo">
+
+ACTIF
+
+</span>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<footer>
+
+ANOR © 2026 • Intelligence Center • Artificial Intelligence Platform
+
+</footer>
+
+</div>
+
+<script>
+
+const API=
+
+location.hostname==="localhost"||
+
+location.hostname==="127.0.0.1"
+
+?
+
+"http://localhost:3000/api"
+
+:
+
+"https://anor-back.onrender.com/api";
+
+window.API=API;
+
+</script>
+
+<script src="./intelligence.js"></script>
+
+</body>
+
+</html>

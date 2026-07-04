@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>ANOR | National Registry</title>
+
+<link
+rel="stylesheet"
+href="./registry.css"
+/>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+    <div class="brand">
+
+        <img
+        src="../assets/logo_anor.png"
+        class="logo"
+        >
+
+        <h2>ANOR</h2>
+
+        <span>NATIONAL REGISTRY</span>
+
+    </div>
+
+    <nav class="menu">
+
+        <a href="../dashboard/index.html">
+            🏠 Dashboard
+        </a>
+
+        <a href="../forge/index.html">
+            🏭 Forge
+        </a>
+
+        <a
+        class="active"
+        href="#">
+            📋 Registry
+        </a>
+
+        <a href="../map_surveillance/index.html">
+            🗺️ Surveillance
+        </a>
+
+        <a href="../verification/index.html">
+            ✔ Verification
+        </a>
+
+        <a href="../product_audit/index.html">
+            📦 Product Audit
+        </a>
+
+        <a href="../intelligence/index.html">
+            🧠 Intelligence
+        </a>
+
+        <a href="../analytics/index.html">
+            📊 Analytics
+        </a>
+
+    </nav>
+
+</div>
+
+<div class="content">
+
+<header>
+
+<div>
+
+<h1>
+
+Registre National des Certifications
+
+</h1>
+
+<p>
+
+Consultation en temps réel des produits certifiés ANOR
+
+</p>
+
+</div>
+
+<div class="status">
+
+<div class="liveDot"></div>
+
+REGISTRE SYNCHRONISÉ
+
+</div>
+
+</header>
+
+<section class="cards">
+
+<div class="card">
+
+<h2 id="productsTotal">
+
+0
+
+</h2>
+
+<p>
+
+Produits Certifiés
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="companiesTotal">
+
+0
+
+</h2>
+
+<p>
+
+Entreprises
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="certificatesTotal">
+
+0
+
+</h2>
+
+<p>
+
+Certificats
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="expiredTotal">
+
+0
+
+</h2>
+
+<p>
+
+Expirés
+
+</p>
+
+</div>
+
+</section>
+
+<section class="toolbar">
+
+<input
+id="search"
+type="text"
+placeholder="Recherche produit, entreprise ou sceau..."
+>
+
+<select id="category">
+
+<option value="">
+
+Toutes catégories
+
+</option>
+
+</select>
+
+<select id="status">
+
+<option value="">
+
+Tous statuts
+
+</option>
+
+<option value="ACTIVE">
+
+Actif
+
+</option>
+
+<option value="SUSPENDED">
+
+Suspendu
+
+</option>
+
+<option value="REVOKED">
+
+Révoqué
+
+</option>
+
+<option value="EXPIRED">
+
+Expiré
+
+</option>
+
+</select>
+
+<button id="refresh">
+
+Actualiser
+
+</button>
+
+<button id="export">
+
+Exporter CSV
+
+</button>
+
+</section>
+
+<section class="toolbar">
+
+<input
+id="search"
+type="text"
+placeholder="Recherche produit...">
+
+<input
+id="producteur"
+type="text"
+placeholder="Producteur">
+
+<input
+id="pays"
+type="text"
+placeholder="Pays">
+
+<button onclick="chargerProduits()">
+
+Rechercher
+
+</button>
+
+</section>
+
+<section class="tableContainer">
+
+<table>
+
+<thead>
+
+<tr>
+<th>Visuel</th>
+<th>Produit</th>
+<th>Producteur</th>
+<th>Lot</th>
+<th>Pays</th>
+<th>Action</th>
+</tr>
+
+</thead>
+
+<tbody id="registryTable">
+
+</tbody>
+
+</table>
+
+</section>
+
+<div id="pagination"></div>
+
+<section class="details">
+
+<div class="leftPanel">
+
+<div class="panel">
+
+<h2>
+
+Informations Produit
+
+</h2>
+
+<div id="productDetails">
+
+<p>
+
+Sélectionnez un produit dans le registre.
+
+</p>
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Historique de Certification
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Action</th>
+
+<th>Agent</th>
+
+</tr>
+
+</thead>
+
+<tbody id="historyTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<div class="rightPanel">
+
+<div class="panel">
+
+<h2>
+
+Informations Entreprise
+
+</h2>
+
+<div id="companyDetails">
+
+<p>
+
+Aucune entreprise sélectionnée.
+
+</p>
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Documents Disponibles
+
+</h2>
+
+<div class="documents">
+
+<button
+id="viewCertificate">
+
+Voir Certificat
+
+</button>
+
+<button
+id="downloadCertificate">
+
+Télécharger PDF
+
+</button>
+
+<button
+id="openAudit">
+
+Product Audit
+
+</button>
+
+<button
+id="showMap">
+
+Voir sur la Carte
+
+</button>
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Traçabilité
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Ville</th>
+
+<th>Résultat</th>
+
+</tr>
+
+</thead>
+
+<tbody id="traceabilityTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</section>
+
+<section class="pagination">
+
+<button id="previousPage">
+
+◀ Précédent
+
+</button>
+
+<div id="pageIndicator">
+
+Page 1 / 1
+
+</div>
+
+<button id="nextPage">
+
+Suivant ▶
+
+</button>
+
+</section>
+<footer>
+
+ANOR © 2026 • Registre National des Certifications • Version 5
+
+</footer>
+
+</div>
+
+<script>
+
+const API =
+location.hostname==="localhost" ||
+location.hostname==="127.0.0.1"
+
+?
+
+"http://localhost:3000/api"
+
+:
+
+"https://anor-back.onrender.com/api";
+
+window.API=API;
+
+</script>
+
+<script src="./registry.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+
+<title>ANOR | Product Audit</title>
+
+<link
+rel="stylesheet"
+href="./product_audit.css">
+
+<script
+src="https://cdn.jsdelivr.net/npm/chart.js">
+</script>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+<div class="brand">
+
+<img
+src="../assets/logo_anor.png"
+class="logo">
+
+<h2>ANOR</h2>
+
+<span>PRODUCT AUDIT</span>
+
+</div>
+
+<div class="menu">
+
+<a href="../dashboard/index.html">
+🏠 Dashboard
+</a>
+
+<a href="../forge/index.html">
+🏭 Forge
+</a>
+
+<a href="../registry/index.html">
+📋 Registry
+</a>
+
+<a href="../map_surveillance/index.html">
+🗺️ Surveillance
+</a>
+
+<a class="active" href="#">
+📦 Product Audit
+</a>
+
+<a href="../intelligence/index.html">
+🧠 Intelligence
+</a>
+
+<a href="../verification/index.html">
+✔ Verification
+</a>
+
+</div>
+
+</div>
+
+<div class="content">
+
+<header>
+
+<div>
+
+<h1>
+
+Centre National d'Audit Produit
+
+</h1>
+
+<p>
+
+Historique • Certification • Scans • Traçabilité • IA
+
+</p>
+
+</div>
+
+<div class="live">
+
+<div class="dot"></div>
+
+AUDIT EN DIRECT
+
+</div>
+
+</header>
+
+<section class="searchBar">
+
+<input
+type="text"
+id="searchInput"
+placeholder="Nom produit, sceau, QR Code, entreprise...">
+
+<button id="searchButton">
+
+Rechercher
+
+</button>
+
+<button id="refreshButton">
+
+Actualiser
+
+</button>
+
+<button id="exportButton">
+
+Exporter PDF
+
+</button>
+
+</section>
+
+<section class="stats">
+
+<div class="card">
+
+<h2 id="totalProducts">
+
+0
+
+</h2>
+
+<p>
+
+Produits enregistrés
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="auditedProducts">
+
+0
+
+</h2>
+
+<p>
+
+Produits audités
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="expiredProducts">
+
+0
+
+</h2>
+
+<p>
+
+Certificats expirés
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="highRiskProducts">
+
+0
+
+</h2>
+
+<p>
+
+Produits à risque
+
+</p>
+
+</div>
+
+<div class="card">
+
+<h2 id="todayAudits">
+
+0
+
+</h2>
+
+<p>
+
+Audits aujourd'hui
+
+</p>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Informations Générales
+
+</h2>
+
+<div class="identity">
+
+<div class="photo">
+
+<img
+
+id="visuel"
+
+src="../assets/no-image.png"
+
+class="productImage"
+
+>
+
+</div>
+
+<div class="identityInfo">
+
+<table>
+
+<tr>
+
+<td>Produit</td>
+
+<td id="productName">-</td>
+
+</tr>
+
+<tr>
+
+<td>Entreprise</td>
+
+<td id="companyName">-</td>
+
+</tr>
+
+<tr>
+
+<td>Catégorie</td>
+
+<td id="category">-</td>
+
+</tr>
+
+<tr>
+
+<td>Certification</td>
+
+<td id="certificate">-</td>
+
+</tr>
+
+<tr>
+
+<td>Sceau</td>
+
+<td id="sealId">-</td>
+
+</tr>
+
+<tr>
+
+<td>QR Code</td>
+
+<td id="qrCode">-</td>
+
+</tr>
+
+<tr>
+
+<td>Usine</td>
+
+<td id="factory">-</td>
+
+</tr>
+
+<tr>
+
+<td>Ville</td>
+
+<td id="city">-</td>
+
+</tr>
+
+<tr>
+
+<td>Région</td>
+
+<td id="region">-</td>
+
+</tr>
+
+<tr>
+
+<td>Statut</td>
+
+<td id="status">-</td>
+
+</tr>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Score Produit
+
+</h2>
+
+<canvas id="scoreChart"></canvas>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Historique des Vérifications
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Heure</th>
+
+<th>Ville</th>
+
+<th>Inspecteur</th>
+
+<th>Résultat</th>
+
+</tr>
+
+</thead>
+
+<tbody id="verificationTable">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Statistiques Produit
+
+</h2>
+
+<div class="statsBox">
+
+<div class="mini">
+
+<h3 id="scanCount">
+
+0
+
+</h3>
+
+<p>
+
+Scans
+
+</p>
+
+</div>
+
+<div class="mini">
+
+<h3 id="alertCount">
+
+0
+
+</h3>
+
+<p>
+
+Alertes IA
+
+</p>
+
+</div>
+
+<div class="mini">
+
+<h3 id="inspectionCount">
+
+0
+
+</h3>
+
+<p>
+
+Inspections
+
+</p>
+
+</div>
+
+<div class="mini">
+
+<h3 id="renewCount">
+
+0
+
+</h3>
+
+<p>
+
+Renouvellements
+
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Evolution des Scans
+
+</h2>
+
+<canvas id="scanEvolution"></canvas>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Répartition Géographique
+
+</h2>
+
+<canvas id="geoChart"></canvas>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Historique des Certifications
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Type</th>
+
+<th>Auditeur</th>
+
+<th>Décision</th>
+
+<th>Validité</th>
+
+</tr>
+
+</thead>
+
+<tbody id="certificateHistory">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Documents Associés
+
+</h2>
+
+<div id="documents">
+
+<button>
+
+📄 Certificat
+
+</button>
+
+<button>
+
+📄 Rapport d'audit
+
+</button>
+
+<button>
+
+📄 Procès-verbal
+
+</button>
+
+<button>
+
+📄 Historique ZIP
+
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Historique des Décisions IA
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Algorithme</th>
+
+<th>Décision</th>
+
+<th>Confiance</th>
+
+<th>Niveau</th>
+
+</tr>
+
+</thead>
+
+<tbody id="aiHistory">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Actions Rapides
+
+</h2>
+
+<div class="actions">
+
+<button id="btnVerification">
+
+Lancer une Vérification
+
+</button>
+
+<button id="btnRegistry">
+
+Ouvrir Registry
+
+</button>
+
+<button id="btnMap">
+
+Voir sur la Carte
+
+</button>
+
+<button id="btnIntelligence">
+
+Analyse IA
+
+</button>
+
+<button id="btnGenerateReport">
+
+Rapport PDF
+
+</button>
+
+<button id="btnGenerateInvestigation">
+
+Créer Dossier d'Enquête
+
+</button>
+
+<button id="btnExportZIP">
+
+Exporter ZIP
+
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+<section class="grid">
+
+<div class="panel large">
+
+<h2>
+
+Journal National d'Audit
+
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Utilisateur</th>
+
+<th>Action</th>
+
+<th>Adresse IP</th>
+
+<th>Résultat</th>
+
+</tr>
+
+</thead>
+
+<tbody id="auditLog">
+
+</tbody>
+
+</table>
+
+</div>
+
+<div class="panel">
+
+<h2>
+
+Indice Global Produit
+
+</h2>
+
+<canvas id="riskChart"></canvas>
+
+</div>
+
+</section>
+
+<div id="productList"></div>
+
+<footer>
+
+ANOR © 2026 • Product Audit • National Traceability Platform
+
+</footer>
+
+</div>
+
+<script>
+
+const API=
+
+location.hostname==="localhost"||
+
+location.hostname==="127.0.0.1"
+
+?
+
+"http://localhost:3000/api"
+
+:
+
+"https://anor-back.onrender.com/api";
+
+window.API=API;
+
+</script>
+
+<script src="./product_audit.js"></script>
+
+</body>
+
+</html>

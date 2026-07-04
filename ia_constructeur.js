@@ -1,301 +1,191 @@
 /**
- * ============================================================
- * ia_constructeur.js
- * ANOR V4
- * Constructeur cryptographique de glyphes
- * ============================================================
+ * ==========================================================
+ * forge/ia_constructeur.js
+ * ANOR V7
+ * Constructeur déterministe Bits → Glyphes
+ * ==========================================================
  */
 
 const GLYPHES = require("./forge/bibliotheque_glyphes");
-console.log("GLYPHES =", Array.isArray(GLYPHES), GLYPHES.length);
 
-/*==========================================================
-UTILITAIRES
-==========================================================*/
+/**
+ * ==========================================================
+ * Retourne un glyphe par son nom
+ * ==========================================================
+ */
 
-function bitsToInt(bits){
+function getGlyphe(nom) {
+    if (!nom) return null;
 
-    bits = String(bits).replace(/[^01]/g,"");
+    return GLYPHES.find(g => g.nom === nom) || null;
+}
 
-    if(bits.length===0){
+/**
+ * ==========================================================
+ * Retourne un glyphe par son indice
+ * ==========================================================
+ */
 
-        throw new Error(
-            "Bloc binaire vide."
-        );
+function getGlypheByIndex(index) {
 
+    if (GLYPHES.length === 0) {
+        return null;
     }
 
-    return parseInt(bits,2);
+    index = Math.abs(index) % GLYPHES.length;
 
+    return GLYPHES[index];
 }
 
-function lireBloc(signature, debut, longueur) {
+/**
+ * ==========================================================
+ * Glyphe aléatoire
+ * (conservé uniquement pour les tests)
+ * ==========================================================
+ */
 
-    let chaine = signature;
+function randomGlyphe() {
 
-    while (chaine.length < debut + longueur) {
-        chaine += signature;
-    }
+    return getGlypheByIndex(
 
-    return chaine.substr(debut, longueur);
+        Math.floor(
+            Math.random() * GLYPHES.length
+        )
 
-}
-
-function clamp(v,min,max){
-
-    return Math.max(min,Math.min(max,v));
-
-}
-
-function choixGlyphes(valeur){
-
-    return GLYPHES[
-        valeur % GLYPHES.length
-    ];
-
-}
-
-/*==========================================================
-CONSTRUCTION D'UN GLYPHE
-==========================================================*/
-
-function construireGlyphe(
-    signature,
-    index,
-    rayonBase
-){
-
-    const bloc = lireBloc(
-        signature,
-        index * 11,
-        20
     );
 
-    if(!/^[01]{20}$/.test(bloc)){
+}
 
-        throw new Error(
-            `Bloc binaire invalide : "${bloc}"`
-        );
+/**
+ * ==========================================================
+ * Ensemble aléatoire
+ * (tests uniquement)
+ * ==========================================================
+ */
+
+function randomSet(n = 5) {
+
+    const resultat = [];
+
+    for (let i = 0; i < n; i++) {
+
+        resultat.push(randomGlyphe());
 
     }
 
-    const valeur = bitsToInt(bloc);
+    return resultat;
 
-    const modele = choixGlyphes(valeur);
+}
 
-    if (!modele) {
-        throw new Error(
-            `Glyphe introuvable (index=${index}, valeur=${valeur}, totalGlyphes=${GLYPHES.length})`
-        );
+/**
+ * ==========================================================
+ * Filtre par forme
+ * ==========================================================
+ */
+
+function filterByForme(forme) {
+
+    return GLYPHES.filter(
+
+        g => g.elements.some(
+
+            e => e.forme === forme
+
+        )
+
+    );
+
+}
+
+/**
+ * ==========================================================
+ * Découpe une chaîne de bits
+ * ==========================================================
+ */
+
+function chunkBits(bits, taille = 5) {
+
+    const morceaux = [];
+
+    for (let i = 0; i < bits.length; i += taille) {
+
+        const morceau = bits.substring(i, i + taille);
+
+        if (morceau.length === taille) {
+
+            morceaux.push(morceau);
+
+        }
+
+    }
+
+    return morceaux;
+
+}
+
+/**
+ * ==========================================================
+ * Conversion Bits → Séquence de Glyphes
+ * ==========================================================
+ */
+
+function construireSequence(bits = "") {
+
+    if (!bits || typeof bits !== "string") {
+
+        return [];
+
+    }
+
+    const blocs = chunkBits(bits, 5);
+
+    return blocs.map(bloc => {
+
+        const indice = parseInt(bloc, 2);
+
+        return getGlypheByIndex(indice);
+
+    });
+
+}
+
+/**
+ * ==========================================================
+ * Conversion Signature complète (90 bits)
+ * ==========================================================
+ */
+
+function construireBibliotheque(signature) {
+
+    if (!signature || signature.length < 90) {
+
+        throw new Error("Signature ANOR invalide.");
+
     }
 
     return {
 
-        id: index,
-
-        modele,
-
-        nom: modele.nom,
-
-        elements: JSON.parse(
-            JSON.stringify(
-                modele.elements
-            )
-        ),
-
-        valeur,
-
-        rayon:
-            rayonBase+
-            ((valeur>>2)%18)-9,
-
-        rotation:
-            valeur%360,
-
-        taille:
-            12+
-            ((valeur>>4)%14),
-
-        epaisseur:
-            0.8+
-            ((valeur>>5)%4)*0.35,
-
-        couleur:
-            (valeur>>6)%3,
-
-        miroir:
-            ((valeur>>7)&1)==1,
-
-        plein:
-            ((valeur>>8)&1)==1,
-
-        cluster:
-            1+
-            ((valeur>>9)%3),
-
-        espacement:
-            5+
-            ((valeur>>10)%8),
-
-        offset:
-            ((valeur>>13)%14)-7,
-
-        niveau:
-            (valeur>>15)%4,
-
-        famille:
-            (valeur>>17)%8,
-
-        variation:
-            (valeur>>19)%16
-
-    };
-
-}
-
-/*==========================================================
-CONSTRUCTION D'UN ANNEAU
-==========================================================*/
-
-function construireAnneau(
-
-    signature,
-
-    debut,
-
-    nombre,
-
-    rayon
-
-){
-
-    const liste=[];
-
-    for(
-
-        let i=0;
-
-        i<nombre;
-
-        i++
-
-    ){
-
-        liste.push(
-
-            construireGlyphe(
-
-                signature,
-
-                debut+i,
-
-                rayon
-
-            )
-
-        );
-
-    }
-
-    return liste;
-
-}
-
-/*==========================================================
-METADONNEES
-==========================================================*/
-
-function construireMeta(signature){
-
-    let somme=0;
-
-    for(let i=0;i<signature.length;i++){
-
-        somme+=Number(signature[i]);
-
-    }
-
-    return{
-
-        version:4,
-
-        longueurSignature:signature.length,
-
-        glyphesDisponibles:GLYPHES.length,
-
-        checksum:somme,
-
-        densite:24
-
-    };
-
-}
-
-/*==========================================================
-BIBLIOTHEQUE COMPLETE
-==========================================================*/
-
-function construireBibliotheque(signature){
-
-    if(!signature){
-
-        throw new Error(
-            "Signature absente."
-        );
-
-    }
-
-    if(signature.length!==90){
-
-        throw new Error(
-            "Signature invalide."
-        );
-
-    }
-
-    return{
-
-        signature,
-
-        meta:
-            construireMeta(signature),
-
         noyau:
-            construireAnneau(
 
-                signature,
+            construireSequence(
 
-                0,
-
-                18,
-
-                245
+                signature.substring(0, 20)
 
             ),
 
         transition:
-            construireAnneau(
 
-                signature,
+            construireSequence(
 
-                18,
-
-                28,
-
-                335
+                signature.substring(20, 50)
 
             ),
 
         peripherie:
-            construireAnneau(
 
-                signature,
+            construireSequence(
 
-                46,
-
-                44,
-
-                425
+                signature.substring(50, 90)
 
             )
 
@@ -303,5 +193,26 @@ function construireBibliotheque(signature){
 
 }
 
-module.exports=
-    construireBibliotheque;
+/**
+ * ==========================================================
+ * EXPORTS
+ * ==========================================================
+ */
+
+module.exports = {
+
+    getGlyphe,
+
+    getGlypheByIndex,
+
+    randomGlyphe,
+
+    randomSet,
+
+    filterByForme,
+
+    construireSequence,
+
+    construireBibliotheque
+
+};

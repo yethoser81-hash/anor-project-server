@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ANOR Control Center</title>
+<link rel="stylesheet" href="./dashboard.css">
+</head>
+
+<body>
+
+<div class="sidebar">
+    <div class="logoBox">
+        <img src="../assets/logo_anor.png" class="logo">
+        <h2>ANOR V5</h2>
+    </div>
+
+    <a href="#" class="active">Dashboard</a>
+    <a href="../forge/index.html">Forge</a>
+    <a href="../registry/index.html">Registry</a>
+    <a href="../map_surveillance/index.html">Map</a>
+    <a href="../product_audit/index.html">Audit</a>
+    <a href="../intelligence/index.html">Intelligence</a>
+    <a href="../verification/index.html">Verification</a>
+    <a href="../settings/index.html">Settings</a>
+</div>
+
+<div class="main">
+
+    <div class="topbar">
+        <h1>Control Center</h1>
+        <div class="status">● LIVE SYSTEM</div>
+    </div>
+
+    <div class="kpis">
+
+        <div class="card">
+            <h3 id="products">0</h3>
+            <p>Produits</p>
+        </div>
+
+        <div class="card">
+            <h3 id="seals">0</h3>
+            <p>Sceaux</p>
+        </div>
+
+        <div class="card">
+            <h3 id="scans">0</h3>
+            <p>Scans</p>
+        </div>
+
+        <div class="card">
+            <h3 id="alerts">0</h3>
+            <p>Alertes</p>
+        </div>
+
+    </div>
+
+    <div class="grid">
+
+        <div class="panel">
+            <h3>Activité temps réel</h3>
+            <div id="activity"></div>
+        </div>
+
+        <div class="panel">
+            <h3>Surveillance</h3>
+            <div class="miniMap"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="./dashboard.js"></script>
+
+</body>
+</html>

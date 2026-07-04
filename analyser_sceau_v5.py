@@ -1,217 +1,179 @@
-import sys
-import json
-import cv2
-import numpy as np
-import hashlib
+"""
+==========================================================
+analyser_sceau.py
+ANOR V7 - VISION IA INDUSTRIELLE STABLE
+==========================================================
+"""
+
 import math
-
-# =========================
-# BIBLIOTHEQUE DE FORMES
-# =========================
-BIBLIOTHEQUE_FORMES = {
-    0: "cercle",
-    1: "carre",
-    2: "rectangle",
-    3: "triangle",
-    4: "losange",
-    5: "croix",
-    6: "demi_cercle",
-    7: "barre_verticale"
-}
-
-SEED = 3
+from collections import defaultdict
 
 
-def hash_bits(bits):
-    return hashlib.sha256(bits.encode()).hexdigest()
+# ==========================================================
+# CENTROÏDE
+# ==========================================================
 
-# =========================
-# DETECTER FORME (Point 2)
-# =========================
-def detecter_forme(contour):
-    peri = cv2.arcLength(contour, True)
-    approx = cv2.approxPolyDP(contour, 0.04 * peri, True)
-    n = len(approx)
-    if n == 3: return "triangle"
-    if n == 4:
-        x, y, w, h = cv2.boundingRect(approx)
-        ratio = w / float(h)
-        if 0.90 < ratio < 1.10: return "carre"
-        return "rectangle"
-    if n == 5: return "losange"
-    if n > 6: return "cercle"
-    return "forme"
+def compute_centroid(elements):
+    if not elements:
+        return (0.0, 0.0)
 
-# =========================
-# DETECTION ORIENTATION (Point 1)
-# =========================
-def calcul_orientation(zone):
-    orientation = 0.0
-    if len(zone) > 5:
-        cts, _ = cv2.findContours(zone, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if cts:
-            c = max(cts, key=cv2.contourArea)
-            if len(c) >= 5:
-                try:
-                    (_, _), (_, _), ang = cv2.fitEllipse(c)
-                    orientation = float(ang)
-                except:
-                    orientation = 0.0
-    return orientation
+    sx = sum(e.get("x", 0.0) for e in elements)
+    sy = sum(e.get("y", 0.0) for e in elements)
 
-# =========================
-# EXTRACTION IA
-# =========================
-def extraire_signature_ia(image_path):
-
-    try:
-        img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            return {"success": False, "message": "Image invalide"}
-
-        # normalisation
-        TARGET = 1400
-        img = cv2.resize(img, (TARGET, TARGET), interpolation=cv2.INTER_LANCZOS4)
-
-        # binarisation propre
-        _, thresh = cv2.threshold(
-            img, 0, 255,
-            cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
-        )
-
-        kernel = np.ones((3,3), np.uint8)
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-
-        contours, _ = cv2.findContours(
-            thresh,
-            cv2.RETR_EXTERNAL,
-            cv2.CHAIN_APPROX_SIMPLE
-        )
-
-        if not contours:
-            return {"success": False, "message": "Aucun contour détecté"}
-
-        grand = max(contours, key=cv2.contourArea)
-
-        M = cv2.moments(grand)
-
-        if M["m00"] != 0:
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
-        else:
-            cx, cy = TARGET//2, TARGET//2
-
-        # =========================
-        # ANNEAUX LOGIQUES
-        # =========================
-        anneaux = [
-            {"key": "noyau", "r": 350, "count": 20, "dec": 0},
-            {"key": "transition", "r": 450, "count": 30, "dec": 0.05},
-            {"key": "peripherie", "r": 550, "count": 40, "dec": 0.1}
-        ]
-
-        result = {}
-        formes_result = {}
-
-        # =========================
-        # EXTRACTION GLOBALE
-        # =========================
-        for a in anneaux:
-
-            bits = []
-            glyphes = []
-
-            for i in range(a["count"]):
-
-                angle = (i / a["count"]) * np.pi * 2 + a["dec"]
-
-                x = int(cx + np.cos(angle) * a["r"])
-                y = int(cy + np.sin(angle) * a["r"])
-
-                x = np.clip(x, 10, TARGET-11)
-                y = np.clip(y, 10, TARGET-11)
-
-                zone = thresh[y-10:y+11, x-10:x+11]
-                densite = np.count_nonzero(zone) / zone.size
-
-                bit = 1 if densite > 0.45 else 0
-                bits.append(str(bit))
-
-                # =========================
-                # GLYPHE STRUCTURE (Points 1,3,4,5)
-                # =========================
-                index = (i + bit + SEED) % 8
-                nom_forme = BIBLIOTHEQUE_FORMES[index]
-                
-                # Détection cluster (Point 3)
-                cts, _ = cv2.findContours(zone, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-                cluster = len(cts)
-                
-                # Orientation réelle (Point 1)
-                orientation = calcul_orientation(zone)
-                
-                # Taille/Aire (Point 4)
-                aire = cv2.contourArea(max(cts, key=cv2.contourArea)) if cts else 0
-                
-                # Hash identifiant (Point 5)
-                glyphe_hash = hashlib.sha1(
-                    (nom_forme + str(round(orientation)) + str(cluster)).encode()
-                ).hexdigest()[:12]
-
-                glyphes.append({
-                    "index": i,
-                    "bit": bit,
-                    "forme": nom_forme,
-                    "orientation": orientation,
-                    "cluster": cluster,
-                    "aire": aire,
-                    "glyphe_id": glyphe_hash
-                })
-
-            bits_str = "".join(bits)
-            result[a["key"]] = bits_str
-            formes_result[a["key"]] = {
-                "bits": bits_str,
-                "glyphes": glyphes,
-                "hash": hash_bits(bits_str)
-            }
-
-        # Score qualité (Point 6)
-        qualite = np.count_nonzero(thresh)
-        qualite = min(100, round(qualite / 9000 * 100))
-
-        # =========================
-        # SORTIE FINALE
-        # =========================
-        return {
-            "success": True,
-            "noyau": result["noyau"],
-            "transition": result["transition"],
-            "peripherie": result["peripherie"],
-            "formes": formes_result,
-            "glyphes": {
-                "noyau": formes_result["noyau"]["glyphes"],
-                "transition": formes_result["transition"]["glyphes"],
-                "peripherie": formes_result["peripherie"]["glyphes"]
-            },
-            "lecture": {
-                "qualite": qualite,
-                "version": "ANOR IA V6"
-            }
-        }
-
-    except Exception as e:
-        return {
-            "success": False,
-            "message": str(e)
-        }
+    n = len(elements)
+    return (sx / n, sy / n)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print(json.dumps({"success": False, "message": "Image manquante"}))
-        sys.exit(1)
+# ==========================================================
+# NORMALISATION CENTRÉE
+# ==========================================================
 
-    res = extraire_signature_ia(sys.argv[1])
-    print(json.dumps(res))
+def normalize(elements, cx, cy):
+    return [
+        {**e, "x": e.get("x", 0.0) - cx, "y": e.get("y", 0.0) - cy}
+        for e in elements
+    ]
+
+
+# ==========================================================
+# BOUNDS (SYNC RENDERER)
+# ==========================================================
+
+def compute_bounds(elements):
+    if not elements:
+        return (0.0, 0.0, 0.0, 0.0)
+
+    xs, ys = [], []
+
+    for e in elements:
+        x, y = e.get("x", 0.0), e.get("y", 0.0)
+        size = e.get("taille", e.get("largeur", 0.0))
+
+        xs += [x - size, x + size]
+        ys += [y - size, y + size]
+
+    return min(xs), max(xs), min(ys), max(ys)
+
+
+# ==========================================================
+# GLYPHE IA CORE
+# ==========================================================
+
+def analyze_glyphe(glyphe):
+
+    elements = glyphe.get("elements", [])
+
+    cx, cy = compute_centroid(elements)
+    norm = normalize(elements, cx, cy)
+
+    xmin, xmax, ymin, ymax = compute_bounds(norm)
+
+    width = max(0.0, xmax - xmin)
+    height = max(0.0, ymax - ymin)
+
+    area = max(width * height, 1e-6)
+
+    density = len(elements) / area
+
+    formes = defaultdict(int)
+
+    rot_sum = 0
+    rot_count = 0
+
+    for e in norm:
+        formes[e.get("forme", "unknown")] += 1
+
+        rot = e.get("rotation")
+        if rot is not None:
+            rot_sum += rot
+            rot_count += 1
+
+    rot_mean = rot_sum / rot_count if rot_count else 0
+
+    rot_var = 0
+    for e in norm:
+        r = e.get("rotation", 0)
+        rot_var += (r - rot_mean) ** 2
+
+    rot_var = rot_var / (rot_count or 1)
+
+    structure_score = 1 / (1 + rot_var)
+
+    return {
+        "nom": glyphe.get("nom"),
+        "centroid": (cx, cy),
+        "width": width,
+        "height": height,
+        "density": density,
+        "structure_score": structure_score,
+        "formes": dict(formes)
+    }
+
+
+# ==========================================================
+# COURONNE IA (VERSION ALIGNÉE RENDERER)
+# ==========================================================
+
+def analyze_couronne(glyphes):
+
+    n = len(glyphes)
+    if n == 0:
+        return {"error": "couronne vide"}
+
+    centroids = []
+    formes_global = defaultdict(int)
+    angles = []
+    radii = []
+
+    for g in glyphes:
+        res = analyze_glyphe(g)
+        cx, cy = res["centroid"]
+        centroids.append((cx, cy))
+
+        for k, v in res["formes"].items():
+            formes_global[k] += v
+
+    gx = sum(c[0] for c in centroids) / n
+    gy = sum(c[1] for c in centroids) / n
+
+    for cx, cy in centroids:
+        dx = cx - gx
+        dy = cy - gy
+
+        angles.append(math.atan2(dy, dx))
+        radii.append(math.sqrt(dx * dx + dy * dy))
+
+    mean_r = sum(radii) / n
+    var_r = sum((r - mean_r) ** 2 for r in radii) / n
+
+    angle_consistency = 0
+    for i in range(len(angles)):
+        angle_consistency += abs(angles[i] - (2 * math.pi * i / n))
+
+    angle_score = 1 / (1 + angle_consistency)
+
+    symmetry_score = (1 / (1 + var_r)) * 0.7 + angle_score * 0.3
+
+    return {
+        "type": "couronne",
+        "glyph_count": n,
+        "center": (gx, gy),
+        "radius_mean": mean_r,
+        "symmetry_score": symmetry_score,
+        "formes": dict(formes_global)
+    }
+
+
+# ==========================================================
+# ENTRY POINT
+# ==========================================================
+
+def analyser_sceau(glyphes, mode="auto"):
+
+    if not glyphes:
+        return {"error": "aucun glyphe"}
+
+    if mode == "couronne" or len(glyphes) > 1:
+        return analyze_couronne(glyphes)
+
+    return analyze_glyphe(glyphes[0])
