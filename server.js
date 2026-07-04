@@ -200,17 +200,32 @@ app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, 
         const signature = decodeur.genererSignature(nom_produit, nom_producteur, lot, pays_origine, nonce, ANOR_SECRET);
         const bibliotheque = decodeur.bitsVersBibliotheque(signature);
 
-        const { error } = await supabase.from('sya_produit_certifie').insert([{
-            nom_produit, 
-            nom_producteur, 
-            lot, 
-            nonce,
-            pays_origine,
-            code_sceau: signature,
-            bibliotheque_formes: JSON.stringify(bibliotheque),
-            visuel_url: req.files?.visuel?.[0]?.originalname || null,
-            version_sceau: "7.0"
-        }]);
+        const segment_noyau = signature.substring(0,30);
+const segment_transition = signature.substring(30,60);
+const segment_peripherie = signature.substring(60);
+
+const { error } = await supabase
+.from("sya_produit_certifie")
+.insert([{
+
+    nom_produit,
+    nom_producteur,
+    lot,
+    pays_origine,
+
+    nonce,
+
+    code_sceau: signature,
+
+    segment_noyau,
+    segment_transition,
+    segment_peripherie,
+
+    bibliotheque_formes: JSON.stringify(bibliotheque),
+
+    version_sceau:"7.0"
+
+}]);
 
         if (error) throw error;
         res.json({ success: true, code_sceau: signature });
