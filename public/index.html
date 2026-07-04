@@ -272,7 +272,15 @@ function toggleDates() {
 }
 
 async function submitForge() {
-    // Validation basique
+    const nom_produit = document.getElementById("nom_produit");
+    const nom_producteur = document.getElementById("nom_producteur");
+    const composition = document.getElementById("composition");
+    const lot = document.getElementById("lot");
+    const type_emballage = document.getElementById("type_emballage");
+    const pays_origine = document.getElementById("pays_origine");
+    const certificat_pdf = document.getElementById("certificat_pdf");
+    const visuel = document.getElementById("visuel");
+
     if(!nom_produit.value || !lot.value || !visuel.files[0]) {
         return alert("Veuillez remplir les champs obligatoires et fournir un visuel.");
     }
@@ -289,13 +297,13 @@ async function submitForge() {
     formData.append("nonce", nonce);
 
     if(pays_origine.value.toLowerCase() === "cameroun") {
-        formData.append("date_certificat_conformite", date_certificat_conformite.value);
+        formData.append("date_certificat_conformite", document.getElementById("date_certificat_conformite").value);
     } else {
-        formData.append("date_fabrication", date_fabrication.value);
-        formData.append("date_peremption", date_peremption.value);
+        formData.append("date_fabrication", document.getElementById("date_fabrication").value);
+        formData.append("date_peremption", document.getElementById("date_peremption").value);
     }
 
-    formData.append("certificat_pdf", certificat_pdf.files[0]);
+    if(certificat_pdf.files[0]) formData.append("certificat_pdf", certificat_pdf.files[0]);
     formData.append("visuel", visuel.files[0]);
 
     const res = await fetch("/api/produit/enregistrer", {
@@ -308,7 +316,6 @@ async function submitForge() {
     if(!data.success) return alert(data.message);
 
     currentSignature = data.code_sceau;
-    // On récupère l'ID via le backend ou on stocke l'url
     currentKitUrl = `/api/produit/kit/${data.produit_id || data.id || 'dernier'}`; 
 
     document.getElementById("status").innerText = "SCEAU GÉNÉRÉ";
@@ -319,8 +326,6 @@ async function submitForge() {
 
 async function downloadKit() {
     if(!currentKitUrl) return alert("Générez un sceau d'abord.");
-    
-    // Téléchargement sécurisé via le serveur
     window.location.href = currentKitUrl;
 }
 </script>
