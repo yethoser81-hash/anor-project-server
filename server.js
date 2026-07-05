@@ -164,21 +164,22 @@ app.get("/api/product_audit/:id", async (req, res) => {
 
 app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, { name: 'visuel' }]), async (req, res) => {
     try {
-        // Point 18 : Récupération exhaustive de toutes les données du formulaire envoyées par le front
-        const { 
-            nom_produit, 
-            nom_producteur, 
-            composition,
-            lot, 
-            type_emballage,
-            quantite_totale,
-            pays_origine, 
-            nonce,
-            date_certificat_conformite,
-            date_fabrication,
-            date_peremption,
-            visuel_url
-        } = req.body;
+        const body = req.body;
+        
+        // Extraction sécurisée des données
+        const nom_produit = body.nom_produit;
+        const nom_producteur = body.nom_producteur;
+        const composition = body.composition || null;
+        const lot = body.lot;
+        const type_emballage = body.type_emballage || null;
+        // On récupère la valeur sous le nom 'quantite_totale' envoyé par le front
+        const quantite = parseInt(body.quantite_totale || 1);
+        const pays_origine = body.pays_origine;
+        const nonce = body.nonce;
+        const date_certificat_conformite = body.date_certificat_conformite || null;
+        const date_fabrication = body.date_fabrication || null;
+        const date_peremption = body.date_peremption || null;
+        const visuel_url = body.visuel_url || null;
         
         const signature = decodeur.genererSignature(nom_produit, nom_producteur, lot, pays_origine, nonce, ANOR_SECRET);
         const bibliotheque = decodeur.bitsVersBibliotheque(signature);
@@ -187,7 +188,6 @@ app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, 
         const segment_transition = signature.substring(30,60);
         const segment_peripherie = signature.substring(60);
 
-        // Point 18 & 19 : Enregistrement complet en BD et extraction immédiate de l'enregistrement créé
         const { data, error } = await supabase
             .from("sya_produit_certifie")
             .insert([{
@@ -196,13 +196,13 @@ app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, 
                 composition,
                 lot,
                 type_emballage,
-                quantite: quantite ? parseInt(quantite) : 1,
+                quantite: quantite,
                 pays_origine,
                 nonce,
-                date_certificat_conformite: date_certificat_conformite || null,
-                date_fabrication: date_fabrication || null,
-                date_peremption: date_peremption || null,
-                visuel_url: visuel_url || null,
+                date_certificat_conformite,
+                date_fabrication,
+                date_peremption,
+                visuel_url,
                 code_sceau: signature,
                 segment_noyau,
                 segment_transition,
@@ -215,7 +215,6 @@ app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, 
 
         if (error) throw error;
         
-        // Point 19 & 20 : Retour structuré attendu par forge.js pour affecter correctement l'ID du kit
         res.json({ 
             success: true, 
             id: data.id,
@@ -289,7 +288,7 @@ app.get("/api/product_audit", async (req, res) => {
 
         res.json({
             success: true,
-            produits: data
+            produit: data
         });
     } catch (err) {
         res.status(500).json({
