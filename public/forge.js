@@ -191,8 +191,8 @@ function construireFormData(){
     );
 
     fd.append(
-        "quantite",
-        document.getElementById("quantite").value
+        "quantite_totale",
+        document.getElementById("quantite_totale").value
     );
 
     fd.append(
