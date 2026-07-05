@@ -322,6 +322,18 @@ function verifierFormulaire(){
 
     }
 
+    // AJOUT : Vérification de la quantité totale
+    if(
+        !document.getElementById("quantite_totale") || 
+        document.getElementById("quantite_totale").value.trim()===""
+    ){
+
+        alert("La quantité totale est obligatoire.");
+
+        return false;
+
+    }
+
     if(
         document.getElementById("pays_origine").value.trim()===""
     ){
