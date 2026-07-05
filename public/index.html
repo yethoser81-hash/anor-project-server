@@ -1,334 +1,180 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ANOR - Forge Haute Sécurité</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="/forge/dessin_primitives.js"></script>
-<script src="/forge/dessin_glyphes.js"></script>
-<script src="/forge/dessin_guilloches.js"></script>
-<script src="/forge/forgeRenderer.js"></script>
-
-<style>
-:root {
-    --green:#008751;
-    --red:#ce1126;
-    --yellow:#fcd116;
-    --dark:#2d3436;
-}
-
-body {
-    margin:0;
-    font-family: 'Segoe UI', sans-serif;
-    background:#f0f3f5;
-    display:flex;
-    height:100vh;
-    color:var(--dark);
-}
-
-/* SIDEBAR */
-.sidebar {
-    width:420px;
-    background:#fff;
-    padding:20px;
-    overflow-y:auto;
-    box-shadow:5px 0 25px rgba(0,0,0,0.08);
-}
-
-h2 {
-    color:var(--green);
-    border-left:5px solid var(--yellow);
-    padding-left:10px;
-    font-size:18px;
-    margin-bottom:20px;
-}
-
-.form-group {
-    margin-bottom:12px;
-}
-
-label {
-    font-size:11px;
-    font-weight:700;
-    text-transform:uppercase;
-    color:#636e72;
-}
-
-input,select,textarea {
-    width:100%;
-    padding:10px;
-    border:1px solid #dfe6e9;
-    border-radius:6px;
-    margin-top:4px;
-    font-size:14px;
-}
-
-textarea {
-    resize:none;
-}
-
-button {
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:800;
-    background:linear-gradient(135deg,#1e3799,#0984e3);
-    color:white;
-    transition:0.2s;
-}
-
-button:hover {
-    transform:translateY(-2px);
-    filter:brightness(1.1);
-}
-
-/* MAIN */
-.main {
-    flex:1;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:radial-gradient(circle,#eef2f3,#cfd8dc);
-    padding:20px;
-}
-
-.card {
-    width:850px;
-    background:#fff;
-    border-radius:18px;
-    padding:25px;
-    box-shadow:0 30px 60px rgba(0,0,0,0.15);
-    text-align:center;
-}
-
-.status {
-    display:inline-block;
-    padding:6px 15px;
-    border-radius:30px;
-    background:#d1e7dd;
-    color:#0f5132;
-    font-weight:700;
-    font-size:12px;
-    margin-bottom:15px;
-}
-
-.preview {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
-    margin-top:15px;
-}
-
-.box {
-    border:2px solid #eee;
-    border-radius:12px;
-    padding:10px;
-    background:#fafafa;
-}
-
-canvas {
-    width:100%;
-    border-radius:10px;
-}
-
-img {
-    width:100%;
-    border-radius:10px;
-}
-
-.hidden { display:none; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANOR • Forge Nationale</title>
+    <link rel="stylesheet" href="./forge.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="/forge/dessin_primitives.js"></script>
+    <script src="/forge/dessin_glyphes.js"></script>
+    <script src="/forge/dessin_guilloches.js"></script>
+    <script src="/forge/forgeRenderer.js"></script>
 </head>
-
 <body>
 
-<div class="sidebar">
-<h2>FORGE ANOR - CERTIFICATION</h2>
-
-<div class="form-group">
-<label>Nom produit</label>
-<input id="nom_produit">
-</div>
-
-<div class="form-group">
-<label>Producteur</label>
-<input id="nom_producteur">
-</div>
-
-<div class="form-group">
-<label>Composition</label>
-<input id="composition">
-</div>
-
-<div class="form-group">
-<label>Lot</label>
-<input id="lot">
-</div>
-
-<div class="form-group">
-<label>Quantité (sérialisation interne)</label>
-<input id="quantite" type="number" value="1">
-</div>
-
-<div class="form-group">
-<label>Type emballage</label>
-<input id="type_emballage">
-</div>
-
-<div class="form-group">
-<label>Pays d'origine</label>
-<input id="pays_origine" oninput="toggleDates()">
-</div>
-
-<div id="camFields" class="hidden">
-<div class="form-group">
-<label>Date certificat conformité</label>
-<input type="date" id="date_certificat_conformite">
-</div>
-</div>
-
-<div id="otherFields">
-<div class="form-group">
-<label>Date fabrication</label>
-<input type="date" id="date_fabrication">
-</div>
-
-<div class="form-group">
-<label>Date péremption</label>
-<input type="date" id="date_peremption">
-</div>
-</div>
-
-<div class="form-group">
-<label>Certificat PDF</label>
-<input type="file" id="certificat_pdf">
-</div>
-
-<div class="form-group">
-<label>Visuel produit</label>
-<input type="file" id="visuel" accept="image/*">
-</div>
-
-<button onclick="submitForge()">GÉNÉRER SCEAU</button>
-</div>
-
-<div class="main">
-
-<div class="card">
-<div id="status" class="status">TERMINAL PRÊT</div>
-
-<div class="preview">
-    <div class="box">
-        <canvas id="sceauCanvas" width="1000" height="1000"></canvas>
+<header class="topbar">
+    <div class="brand">
+        <img src="./assets/logo_anor.png" class="logo">
+        <div>
+            <h1>FORGE ANOR</h1>
+            <p>Plateforme Nationale de Certification</p>
+        </div>
     </div>
-
-    <div class="box">
-        <img id="previewImg" style="display:none;">
-        <div id="placeholder">Aucune image</div>
+    <nav>
+        <a href="./dashboard/index.html">🏠 Dashboard</a>
+        <a href="./registry/index.html">📦 Registry</a>
+        <a class="active" href="./index.html">🏭 Forge</a>
+        <a href="./verification/index.html">✔ Vérification</a>
+        <a href="./product_audit/index.html">📋 Product Audit</a>
+        <a href="./map_surveillance/index.html">🗺 Surveillance</a>
+        <a href="./intelligence/index.html">🧠 Intelligence</a>
+        <a href="./analytics/index.html">📊 Analytics</a>
+    </nav>
+    <div class="serverState">
+        <div class="led"></div>
+        Serveur connecté
     </div>
-</div>
+</header>
 
-<p id="debug"></p>
+<main class="workspace">
 
-<button onclick="downloadKit()">Télécharger Kit</button>
-</div>
+    <section class="leftPanel">
+        <div class="panel">
+            <h2>Informations du produit</h2>
+            <form id="forgeForm">
+                <div class="row">
+                    <div class="field">
+                        <label>Nom du produit</label>
+                        <input id="nom_produit" type="text" required>
+                    </div>
+                    <div class="field">
+                        <label>Nom du producteur</label>
+                        <input id="nom_producteur" type="text" required>
+                    </div>
+                </div>
 
-</div>
+                <div class="row">
+                    <div class="field">
+                        <label>Composition</label>
+                        <textarea id="composition"></textarea>
+                    </div>
+                    <div class="field">
+                        <label>Lot</label>
+                        <input id="lot" type="text" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Quantité (sérialisation)</label>
+                        <input id="quantite" type="number" min="1" value="1">
+                    </div>
+                    <div class="field">
+                        <label>Type d'emballage</label>
+                        <input id="type_emballage" type="text">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Pays d'origine</label>
+                        <input id="pays_origine" list="listePays" autocomplete="off" placeholder="Commencer à saisir un pays...">
+                        <datalist id="listePays">
+                            </datalist>
+                    </div>
+                    </div>
+
+                <div id="cameroonFields">
+                    <div class="row">
+                        <div class="field">
+                            <label>Date du certificat de conformité</label>
+                            <input id="date_certificat_conformite" type="date">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="internationalFields">
+                    <div class="row">
+                        <div class="field">
+                            <label>Date de fabrication</label>
+                            <input id="date_fabrication" type="date">
+                        </div>
+                        <div class="field">
+                            <label>Date de péremption</label>
+                            <input id="date_peremption" type="date">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="field">
+                        <label>Certificat PDF</label>
+                        <input id="certificat_pdf" type="file" accept=".pdf">
+                    </div>
+                    <div class="field">
+                        <label>Visuel du produit</label>
+                        <input id="visuel" type="file" accept="image/*">
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" id="btnForge">⚙ FORGER</button>
+                    <button type="button" id="btnReset">↺ RESET</button>
+                    <button type="button" id="btnPNG">🖼 PNG HD</button>
+                    <button type="button" id="btnKit">📦 KIT COMPLET</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <section class="rightPanel">
+        <div class="previewCard">
+            <h2>Prévisualisation</h2>
+            <div class="previewGrid">
+                <div class="previewBox">
+                    <div class="previewTitle">IMAGE DU PRODUIT</div>
+                    <div class="imageFrame">
+                        <img id="previewImg" src="" alt="Prévisualisation" style="display:none;">
+                        <div id="imagePlaceholder" class="placeholder">
+                            Aucune image sélectionnée
+                        </div>
+                    </div>
+                </div>
+                <div class="previewBox">
+                    <div class="previewTitle">SCEAU NUMÉRIQUE ANOR</div>
+                    <div class="sealFrame">
+                        <canvas id="sceauCanvas" width="1000" height="1000"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="generationCard">
+            <div class="generationHeader">
+                <div class="generationLed"></div>
+                <span>Génération du sceau numérique</span>
+            </div>
+            <div class="generationBody">
+                <div class="generationStatus">
+                    <span>Statut :</span>
+                    <strong id="status">PRÊT</strong>
+                </div>
+                <div class="generationStatus">
+                    <span>Signature :</span>
+                    <code id="debug">-</code>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
 
 <script>
-const API = "";
-let currentKitUrl = null;
-
-let imgBase64 = "";
-let currentSignature = "";
-
-document.getElementById("visuel").addEventListener("change", e => {
-    const file = e.target.files[0];
-    if(!file) return;
-
-    const reader = new FileReader();
-    reader.onload = ev => {
-        imgBase64 = ev.target.result;
-        document.getElementById("previewImg").src = imgBase64;
-        document.getElementById("previewImg").style.display = "block";
-        document.getElementById("placeholder").style.display = "none";
-    };
-    reader.readAsDataURL(file);
-});
-
-function toggleDates() {
-    const p = document.getElementById("pays_origine").value.toLowerCase().trim();
-    if(p === "cameroun") {
-        document.getElementById("camFields").classList.remove("hidden");
-        document.getElementById("otherFields").classList.add("hidden");
-    } else {
-        document.getElementById("camFields").classList.add("hidden");
-        document.getElementById("otherFields").classList.remove("hidden");
-    }
-}
-
-async function submitForge() {
-    const nom_produit = document.getElementById("nom_produit");
-    const nom_producteur = document.getElementById("nom_producteur");
-    const composition = document.getElementById("composition");
-    const lot = document.getElementById("lot");
-    const type_emballage = document.getElementById("type_emballage");
-    const pays_origine = document.getElementById("pays_origine");
-    const certificat_pdf = document.getElementById("certificat_pdf");
-    const visuel = document.getElementById("visuel");
-
-    if(!nom_produit.value || !lot.value || !visuel.files[0]) {
-        return alert("Veuillez remplir les champs obligatoires et fournir un visuel.");
-    }
-
-    const nonce = crypto.randomUUID();
-
-    const formData = new FormData();
-    formData.append("nom_produit", nom_produit.value);
-    formData.append("nom_producteur", nom_producteur.value);
-    formData.append("composition", composition.value);
-    formData.append("lot", lot.value);
-    formData.append("type_emballage", type_emballage.value);
-    formData.append("pays_origine", pays_origine.value);
-    formData.append("nonce", nonce);
-
-    if(pays_origine.value.toLowerCase() === "cameroun") {
-        formData.append("date_certificat_conformite", document.getElementById("date_certificat_conformite").value);
-    } else {
-        formData.append("date_fabrication", document.getElementById("date_fabrication").value);
-        formData.append("date_peremption", document.getElementById("date_peremption").value);
-    }
-
-    if(certificat_pdf.files[0]) formData.append("certificat_pdf", certificat_pdf.files[0]);
-    formData.append("visuel", visuel.files[0]);
-
-    const res = await fetch("/api/produit/enregistrer", {
-        method:"POST",
-        body:formData
-    });
-
-    const data = await res.json();
-
-    if(!data.success) return alert(data.message);
-
-    currentSignature = data.code_sceau;
-    currentKitUrl = `/api/produit/kit/${data.produit_id || data.id || 'dernier'}`; 
-
-    document.getElementById("status").innerText = "SCEAU GÉNÉRÉ";
-    document.getElementById("debug").innerText = currentSignature.substring(0,40);
-
-    window.genererSceau("sceauCanvas", data.bibliotheque);
-}
-
-async function downloadKit() {
-    if(!currentKitUrl) return alert("Générez un sceau d'abord.");
-    window.location.href = currentKitUrl;
-}
+    const API = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+        ? "http://localhost:10000/api"
+        : "https://anor-api.onrender.com/api";
+    window.API = API;
 </script>
-
+<script src="./forge.js"></script>
 </body>
 </html>

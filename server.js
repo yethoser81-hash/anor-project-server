@@ -48,6 +48,9 @@ const ANOR_SECRET = process.env.ANOR_SECRET;
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+// Reroutage vers le dashboard
+app.use(express.static(path.join(__dirname, "dashboard")));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'dashboard', 'index.html')));
 
 /* ==========================================
    2. HELPERS (Orchestrateur)
@@ -77,9 +80,7 @@ function extraireGlyphesViaPython(imageBuffer) {
 ========================================================== */
 
 app.get('/api/registry/produits', async (req, res) => {
-
     try {
-
         const page = parseInt(req.query.page || 1);
         const limit = parseInt(req.query.limit || 20);
 
@@ -92,23 +93,17 @@ app.get('/api/registry/produits', async (req, res) => {
             .select("*", { count: "exact" });
 
         if (search !== "") {
-
             query = query.or(
                 `nom_produit.ilike.%${search}%,nom_producteur.ilike.%${search}%,lot.ilike.%${search}%`
             );
-
         }
 
         if (producteur !== "") {
-
             query = query.eq("nom_producteur", producteur);
-
         }
 
         if (pays !== "") {
-
             query = query.eq("pays_origine", pays);
-
         }
 
         const from = (page - 1) * limit;
@@ -123,30 +118,18 @@ app.get('/api/registry/produits', async (req, res) => {
         if (error) throw error;
 
         res.json({
-
             success: true,
-
             total: count,
-
             page,
-
             limit,
-
             produits: data
-
         });
-
     } catch (err) {
-
         res.status(500).json({
-
             success: false,
             message: err.message
-
         });
-
     }
-
 });
 
 /* ==========================================================
@@ -154,85 +137,100 @@ app.get('/api/registry/produits', async (req, res) => {
 ========================================================== */
 
 app.get("/api/product_audit/:id", async (req, res) => {
-
     try {
-
         const { data, error } = await supabase
-
             .from("sya_produit_certifie")
-
             .select("*")
-
             .eq("id", req.params.id)
-
             .single();
 
         if (error) throw error;
 
         res.json({
-
             success: true,
-
             produit: data
-
         });
-
-    }
-
-    catch (err) {
-
+    } catch (err) {
         res.status(500).json({
-
             success: false,
-
             message: err.message
-
         });
-
     }
-
 });
+
+/* ==========================================================
+   FORGE : ENREGISTREMENT ET GÉNÉRATION DE SCEAU
+========================================================== */
 
 app.post('/api/produit/enregistrer', upload.fields([{ name: 'certificat_pdf' }, { name: 'visuel' }]), async (req, res) => {
     try {
-        const { nom_produit, nom_producteur, lot, pays_origine, nonce } = req.body;
+        // Point 18 : Récupération exhaustive de toutes les données du formulaire envoyées par le front
+        const { 
+            nom_produit, 
+            nom_producteur, 
+            composition,
+            lot, 
+            type_emballage,
+            quantite,
+            pays_origine, 
+            nonce,
+            date_certificat_conformite,
+            date_fabrication,
+            date_peremption,
+            visuel_url
+        } = req.body;
         
         const signature = decodeur.genererSignature(nom_produit, nom_producteur, lot, pays_origine, nonce, ANOR_SECRET);
         const bibliotheque = decodeur.bitsVersBibliotheque(signature);
 
         const segment_noyau = signature.substring(0,30);
-const segment_transition = signature.substring(30,60);
-const segment_peripherie = signature.substring(60);
+        const segment_transition = signature.substring(30,60);
+        const segment_peripherie = signature.substring(60);
 
-const { error } = await supabase
-.from("sya_produit_certifie")
-.insert([{
-
-    nom_produit,
-    nom_producteur,
-    lot,
-    pays_origine,
-
-    nonce,
-
-    code_sceau: signature,
-
-    segment_noyau,
-    segment_transition,
-    segment_peripherie,
-
-    bibliotheque_formes: JSON.stringify(bibliotheque),
-
-    version_sceau:"7.0"
-
-}]);
+        // Point 18 & 19 : Enregistrement complet en BD et extraction immédiate de l'enregistrement créé
+        const { data, error } = await supabase
+            .from("sya_produit_certifie")
+            .insert([{
+                nom_produit,
+                nom_producteur,
+                composition,
+                lot,
+                type_emballage,
+                quantite: quantite ? parseInt(quantite) : 1,
+                pays_origine,
+                nonce,
+                date_certificat_conformite: date_certificat_conformite || null,
+                date_fabrication: date_fabrication || null,
+                date_peremption: date_peremption || null,
+                visuel_url: visuel_url || null,
+                code_sceau: signature,
+                segment_noyau,
+                segment_transition,
+                segment_peripherie,
+                bibliotheque_formes: JSON.stringify(bibliotheque),
+                version_sceau: "7.0"
+            }])
+            .select()
+            .single();
 
         if (error) throw error;
-        res.json({ success: true, code_sceau: signature });
+        
+        // Point 19 & 20 : Retour structuré attendu par forge.js pour affecter correctement l'ID du kit
+        res.json({ 
+            success: true, 
+            id: data.id,
+            produit: data,
+            code_sceau: signature, 
+            bibliotheque: bibliotheque
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
 });
+
+/* ==========================================================
+   VÉRIFICATION
+========================================================== */
 
 app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (req, res) => {
     try {
@@ -251,25 +249,37 @@ app.post('/api/produit/verifier', verifLimiter, upload.single('sceau'), async (r
     }
 });
 
-app.get("/api/produit/kit/:id", async (req, res) => {
-    const { data: produit } = await supabase.from("sya_produit_certifie").select("*").eq("id", req.params.id).single();
-    const biblio = typeof produit.bibliotheque_formes === "string" ? JSON.parse(produit.bibliotheque_formes) : produit.bibliotheque_formes;
-    
-    const canvas = createCanvas(1000, 1000);
-    const renderer = new Renderer(canvas);
-    
-    renderer.renderSceau(biblio); 
+/* ==========================================================
+   KIT DE TÉLÉCHARGEMENT
+========================================== */
 
-    const archive = archiver("zip");
-    archive.pipe(res);
-    archive.append(canvas.toBuffer("image/png"), { name: "sceau_HD.png" });
-    archive.finalize();
+app.get("/api/produit/kit/:id", async (req, res) => {
+    try {
+        const { data: produit, error } = await supabase.from("sya_produit_certifie").select("*").eq("id", req.params.id).single();
+        if (error || !produit) return res.status(404).send("Produit introuvable.");
+
+        const biblio = typeof produit.bibliotheque_formes === "string" ? JSON.parse(produit.bibliotheque_formes) : produit.bibliotheque_formes;
+        
+        const canvas = createCanvas(1000, 1000);
+        const renderer = new Renderer(canvas);
+        
+        renderer.renderSceau(biblio); 
+
+        const archive = archiver("zip");
+        archive.pipe(res);
+        archive.append(canvas.toBuffer("image/png"), { name: "sceau_HD.png" });
+        archive.finalize();
+    } catch (err) {
+        res.status(500).send("Erreur lors de la génération du kit.");
+    }
 });
 
+/* ==========================================================
+   AUDIT GLOBAL
+========================================================== */
+
 app.get("/api/product_audit", async (req, res) => {
-
     try {
-
         const { data, error } = await supabase
             .from("sya_produit_certifie")
             .select("*")
@@ -281,16 +291,12 @@ app.get("/api/product_audit", async (req, res) => {
             success: true,
             produits: data
         });
-
     } catch (err) {
-
         res.status(500).json({
             success: false,
             message: err.message
         });
-
     }
-
 });
 
 const PORT = process.env.PORT || 3000;
