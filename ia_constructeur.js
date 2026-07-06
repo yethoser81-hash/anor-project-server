@@ -1,218 +1,60 @@
 /**
  * ==========================================================
- * forge/ia_constructeur.js
- * ANOR V7
- * Constructeur déterministe Bits → Glyphes
+ * ia_constructeur.js - ANOR V7 (Version Production)
+ * Rôle : Transforme les bits de la signature en glyphes 
+ * concrets et vérifiables (forme + état).
  * ==========================================================
  */
 
-const GLYPHES = require("./forge/bibliotheque_glyphes");
+const G = require("./forge/bibliotheque_glyphes");
 
 /**
- * ==========================================================
- * Retourne un glyphe par son nom
- * ==========================================================
+ * Construit une séquence sécurisée.
+ * Chaque bloc de 5 bits est converti en index, puis nous récupérons
+ * le glyphe correspondant dans la bibliothèque.
  */
+function construireSequence(bits) {
+    if (!bits || bits.length === 0) return [];
 
-function getGlyphe(nom) {
-    if (!nom) return null;
-
-    return GLYPHES.find(g => g.nom === nom) || null;
-}
-
-/**
- * ==========================================================
- * Retourne un glyphe par son indice
- * ==========================================================
- */
-
-function getGlypheByIndex(index) {
-
-    if (GLYPHES.length === 0) {
-        return null;
-    }
-
-    index = Math.abs(index) % GLYPHES.length;
-
-    return GLYPHES[index];
-}
-
-/**
- * ==========================================================
- * Glyphe aléatoire
- * (conservé uniquement pour les tests)
- * ==========================================================
- */
-
-function randomGlyphe() {
-
-    return getGlypheByIndex(
-
-        Math.floor(
-            Math.random() * GLYPHES.length
-        )
-
-    );
-
-}
-
-/**
- * ==========================================================
- * Ensemble aléatoire
- * (tests uniquement)
- * ==========================================================
- */
-
-function randomSet(n = 5) {
-
-    const resultat = [];
-
-    for (let i = 0; i < n; i++) {
-
-        resultat.push(randomGlyphe());
-
-    }
-
-    return resultat;
-
-}
-
-/**
- * ==========================================================
- * Filtre par forme
- * ==========================================================
- */
-
-function filterByForme(forme) {
-
-    return GLYPHES.filter(
-
-        g => g.elements.some(
-
-            e => e.forme === forme
-
-        )
-
-    );
-
-}
-
-/**
- * ==========================================================
- * Découpe une chaîne de bits
- * ==========================================================
- */
-
-function chunkBits(bits, taille = 5) {
-
-    const morceaux = [];
-
-    for (let i = 0; i < bits.length; i += taille) {
-
-        const morceau = bits.substring(i, i + taille);
-
-        if (morceau.length === taille) {
-
-            morceaux.push(morceau);
-
+    const sequence = [];
+    // On traite par blocs de 5 bits pour une granularité de 32 combinaisons (2^5)
+    for (let i = 0; i < bits.length; i += 5) {
+        const bloc = bits.substring(i, i + 5);
+        
+        if (bloc.length === 5) {
+            const idx = parseInt(bloc, 2) % G.length;
+            const glyphe = G[idx];
+            
+            // Injection de métadonnées pour la vérification ultérieure par le serveur
+            sequence.push({
+                id: glyphe.id,
+                nom: glyphe.forme, // Square, Circle, etc.
+                est_plein: glyphe.plein, // Crucial pour l'intégrité du sceau
+                valeur_reelle: glyphe.valeur
+            });
         }
-
     }
-
-    return morceaux;
-
+    return sequence;
 }
 
 /**
- * ==========================================================
- * Conversion Bits → Séquence de Glyphes
- * ==========================================================
+ * Construit la bibliothèque complète pour un sceau.
+ * Permet au serveur de comparer la structure totale [Noyau + Transition + Périphérie]
  */
-
-function construireSequence(bits = "") {
-
-    if (!bits || typeof bits !== "string") {
-
-        return [];
-
-    }
-
-    const blocs = chunkBits(bits, 5);
-
-    return blocs.map(bloc => {
-
-        const indice = parseInt(bloc, 2);
-
-        return getGlypheByIndex(indice);
-
-    });
-
-}
-
-/**
- * ==========================================================
- * Conversion Signature complète (90 bits)
- * ==========================================================
- */
-
-function construireBibliotheque(signature) {
-
-    if (!signature || signature.length < 90) {
-
-        throw new Error("Signature ANOR invalide.");
-
+function construireBibliotheque(bitsComplets) {
+    // Vérification de l'intégrité (Rappel : 90 bits requis)
+    if (bitsComplets.length < 90) {
+        throw new Error("Erreur de sécurité : Séquence binaire incomplète (90 bits requis).");
     }
 
     return {
-
-        noyau:
-
-            construireSequence(
-
-                signature.substring(0, 20)
-
-            ),
-
-        transition:
-
-            construireSequence(
-
-                signature.substring(20, 50)
-
-            ),
-
-        peripherie:
-
-            construireSequence(
-
-                signature.substring(50, 90)
-
-            )
-
+        noyau: construireSequence(bitsComplets.substring(0, 20)),
+        transition: construireSequence(bitsComplets.substring(20, 50)),
+        peripherie: construireSequence(bitsComplets.substring(50, 90))
     };
-
 }
 
-/**
- * ==========================================================
- * EXPORTS
- * ==========================================================
- */
-
-module.exports = {
-
-    getGlyphe,
-
-    getGlypheByIndex,
-
-    randomGlyphe,
-
-    randomSet,
-
-    filterByForme,
-
+module.exports = { 
     construireSequence,
-
-    construireBibliotheque
-
+    construireBibliotheque 
 };

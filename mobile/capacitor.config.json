@@ -1,8 +1,0 @@
-{
-  "appId": "com.anor.check",
-  "appName": "ANOR Check",
-  "webDir": "www",
-  "server": {
-    "cleartext": true
-  }
-}

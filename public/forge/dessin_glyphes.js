@@ -1,68 +1,36 @@
 /**
- * ============================================================
  * dessin_glyphes.js
- * Assemblage des glyphes ANOR - Version Sécurisée
- * ============================================================
+ * Responsable de la mise en forme spatiale des éléments.
+ * Il ne décide plus du choix du glyphe, il l'affiche selon les instructions reçues.
  */
 
-function dessinerGlyphe(ctx, glyphe) {
-    const t = glyphe.taille;
+const Primitives = require('./dessin_primitives.js');
 
-    // Sauvegarde de l'état du contexte pour isoler chaque glyphe
-    ctx.save();
-
-    switch(glyphe.type) {
-        case 0:
-            PRIMITIVES.rectangle(ctx, t * .55, t * 1.80);
-            break;
-
-        case 1:
-            PRIMITIVES.rectangle(ctx, t * .40, t * 1.50);
-            ctx.translate(t * .70, 0);
-            PRIMITIVES.rectangle(ctx, t * .40, t * 1.50);
-            break;
-
-        case 2:
-            PRIMITIVES.rectangle(ctx, t * .35, t * 1.60);
-            ctx.translate(t * .65, 0);
-            PRIMITIVES.rectangle(ctx, t * .35, t * 1.20);
-            ctx.translate(t * .65, 0);
-            PRIMITIVES.rectangle(ctx, t * .35, t * 1.60);
-            break;
-
-        case 3:
-            PRIMITIVES.cercle(ctx, t * .45);
-            ctx.translate(t * .85, 0);
-            PRIMITIVES.rectangle(ctx, t * .30, t * 1.20);
-            break;
-
-        case 4:
-            PRIMITIVES.losange(ctx, t * .55);
-            ctx.translate(t * .85, 0);
-            PRIMITIVES.rectangle(ctx, t * .35, t * 1.40);
-            break;
-
-        case 5:
-            PRIMITIVES.arc(ctx, t * .65);
-            ctx.translate(t * .80, 0);
-            PRIMITIVES.rectangle(ctx, t * .35, t * 1.40);
-            break;
-
-        case 6:
-            PRIMITIVES.croix(ctx, t * .55);
-            ctx.translate(t * .75, 0);
-            PRIMITIVES.cercle(ctx, t * .25);
-            break;
-
-        default:
-            PRIMITIVES.rectangle(ctx, t * .40, t * 1.40);
+const DessinGlyphes = {
+    /**
+     * @param {number} angle - Angle de positionnement sur l'anneau
+     * @param {number} rayon - Rayon de l'anneau
+     * @param {Object} glypheData - Les données du glyphe (id, forme, plein) fournies par le Compositeur
+     */
+    creerGlyphe: function(angle, rayon, glypheData) {
+        // 1. Création de la primitive via le module Primitives
+        const el = Primitives.creerForme(glypheData);
+        
+        // 2. Calcul des coordonnées cartésiennes pour le placement
+        // Le centre du sceau est supposé être à 250px
+        const x = 250 + rayon * Math.cos(angle) - 5;
+        const y = 250 + rayon * Math.sin(angle) - 5;
+        
+        // 3. Application du style positionnel
+        el.style.position = 'absolute'; // S'assure que l'élément peut bouger
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        
+        // 4. Rotation pour que la forme suive la courbure de l'anneau
+        el.style.transform = `rotate(${angle}rad)`;
+        
+        return el;
     }
+};
 
-    // Application du rendu unique pour ce glyphe
-    ctx.stroke();
-
-    // Restauration pour annuler les translations du switch
-    ctx.restore();
-}
-
-window.dessinerGlyphe = dessinerGlyphe;
+module.exports = DessinGlyphes;

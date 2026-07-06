@@ -6,10 +6,6 @@
     <title>ANOR • Forge Nationale</title>
     <link rel="stylesheet" href="./forge.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="/forge/dessin_primitives.js"></script>
-    <script src="/forge/dessin_glyphes.js"></script>
-    <script src="/forge/dessin_guilloches.js"></script>
-    <script src="/forge/forgeRenderer.js"></script>
 </head>
 <body>
 
@@ -38,86 +34,42 @@
 </header>
 
 <main class="workspace">
-
     <section class="leftPanel">
         <div class="panel">
             <h2>Informations du produit</h2>
             <form id="forgeForm">
                 <div class="row">
-                    <div class="field">
-                        <label>Nom du produit</label>
-                        <input id="nom_produit" type="text" required>
-                    </div>
-                    <div class="field">
-                        <label>Nom du producteur</label>
-                        <input id="nom_producteur" type="text" required>
-                    </div>
+                    <div class="field"><label>Nom du produit</label><input id="nom_produit" type="text" required></div>
+                    <div class="field"><label>Nom du producteur</label><input id="nom_producteur" type="text" required></div>
                 </div>
-
                 <div class="row">
-                    <div class="field">
-                        <label>Composition</label>
-                        <textarea id="composition"></textarea>
-                    </div>
-                    <div class="field">
-                        <label>Lot</label>
-                        <input id="lot" type="text" required>
-                    </div>
+                    <div class="field"><label>Composition</label><textarea id="composition"></textarea></div>
+                    <div class="field"><label>Lot</label><input id="lot" type="text" required></div>
                 </div>
-
                 <div class="row">
-                    <div class="field">
-                        <label>Quantité (sérialisation)</label>
-                        <input id="quantite_totale" type="number" min="1" value="1">
-                    </div>
-                    <div class="field">
-                        <label>Type d'emballage</label>
-                        <input id="type_emballage" type="text">
-                    </div>
+                    <div class="field"><label>Quantité (sérialisation)</label><input id="quantite_totale" type="number" min="1" value="1"></div>
+                    <div class="field"><label>Type d'emballage</label><input id="type_emballage" type="text"></div>
                 </div>
-
                 <div class="row">
                     <div class="field">
                         <label>Pays d'origine</label>
-                        <input id="pays_origine" list="listePays" autocomplete="off" placeholder="Commencer à saisir un pays...">
-                        <datalist id="listePays">
-                            </datalist>
-                    </div>
-                    </div>
-
-                <div id="cameroonFields">
-                    <div class="row">
-                        <div class="field">
-                            <label>Date du certificat de conformité</label>
-                            <input id="date_certificat_conformite" type="date">
-                        </div>
+                        <input id="pays_origine" list="listePays" autocomplete="off">
+                        <datalist id="listePays"></datalist>
                     </div>
                 </div>
-
+                <div id="cameroonFields">
+                    <div class="row"><div class="field"><label>Date du certificat de conformité</label><input id="date_certificat_conformite" type="date"></div></div>
+                </div>
                 <div id="internationalFields">
                     <div class="row">
-                        <div class="field">
-                            <label>Date de fabrication</label>
-                            <input id="date_fabrication" type="date">
-                        </div>
-                        <div class="field">
-                            <label>Date de péremption</label>
-                            <input id="date_peremption" type="date">
-                        </div>
+                        <div class="field"><label>Date de fabrication</label><input id="date_fabrication" type="date"></div>
+                        <div class="field"><label>Date de péremption</label><input id="date_peremption" type="date"></div>
                     </div>
                 </div>
-
                 <div class="row">
-                    <div class="field">
-                        <label>Certificat PDF</label>
-                        <input id="certificat_pdf" type="file" accept=".pdf">
-                    </div>
-                    <div class="field">
-                        <label>Visuel du produit</label>
-                        <input id="visuel" type="file" accept="image/*">
-                    </div>
+                    <div class="field"><label>Certificat PDF</label><input id="certificat_pdf" type="file" accept=".pdf"></div>
+                    <div class="field"><label>Visuel du produit</label><input id="visuel" type="file" accept="image/*"></div>
                 </div>
-
                 <div class="actions">
                     <button type="button" id="btnForge">⚙ FORGER</button>
                     <button type="button" id="btnReset">↺ RESET</button>
@@ -134,47 +86,38 @@
             <div class="previewGrid">
                 <div class="previewBox">
                     <div class="previewTitle">IMAGE DU PRODUIT</div>
-                    <div class="imageFrame">
-                        <img id="previewImg" src="" alt="Prévisualisation" style="display:none;">
-                        <div id="imagePlaceholder" class="placeholder">
-                            Aucune image sélectionnée
-                        </div>
-                    </div>
+                    <div class="imageFrame"><img id="previewImg" src="" alt="Produit" style="display:none;"><div id="imagePlaceholder" class="placeholder">Aucune image</div></div>
                 </div>
                 <div class="previewBox">
                     <div class="previewTitle">SCEAU NUMÉRIQUE ANOR</div>
-                    <div class="sealFrame">
-                        <canvas id="sceauCanvas" width="1000" height="1000"></canvas>
-                    </div>
+                    <div id="seal-container" class="sealFrame"></div>
                 </div>
             </div>
         </div>
-
         <div class="generationCard">
-            <div class="generationHeader">
-                <div class="generationLed"></div>
-                <span>Génération du sceau numérique</span>
-            </div>
+            <div class="generationHeader"><div class="generationLed"></div><span>Génération du sceau</span></div>
             <div class="generationBody">
-                <div class="generationStatus">
-                    <span>Statut :</span>
-                    <strong id="status">PRÊT</strong>
-                </div>
-                <div class="generationStatus">
-                    <span>Signature :</span>
-                    <code id="debug">-</code>
-                </div>
+                <div class="generationStatus"><span>Statut :</span><strong id="status">PRÊT</strong></div>
+                <div class="generationStatus"><span>Signature :</span><code id="debug">-</code></div>
             </div>
         </div>
     </section>
 </main>
 
-<script>
+<script type="module">
+    import ForgeRenderer from './forge/forgeRenderer.js';
+
     const API = location.hostname === "localhost" || location.hostname === "127.0.0.1"
         ? "http://localhost:10000/api"
         : "https://anor-api.onrender.com/api";
     window.API = API;
+
+    document.getElementById('btnForge').addEventListener('click', () => {
+        const nom = document.getElementById('nom_produit').value || "ANOR_PROD";
+        ForgeRenderer.render('seal-container', nom);
+        document.getElementById('status').innerText = "SCEAU GÉNÉRÉ";
+        document.getElementById('debug').innerText = nom;
+    });
 </script>
-<script src="./forge.js"></script>
 </body>
 </html>
