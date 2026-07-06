@@ -1,5 +1,5 @@
 /**
- * forge.js - Contrôleur principal de la Forge ANOR
+ * forge.js - ANOR V10 - Contrôleur complet et corrigé
  */
 
 import ForgeRenderer from './forge/forgeRenderer.js';
@@ -10,20 +10,31 @@ const ForgeController = {
         document.getElementById('btnReset').addEventListener('click', () => this.handleReset());
         document.getElementById('visuel').addEventListener('change', (e) => this.handleImagePreview(e));
         
-        // Logique métier : Affichage conditionnel des champs de date selon le pays
-        document.getElementById('pays_origine').addEventListener('input', (e) => this.toggleDateFields(e.target.value));
+        // Utilisation de l'événement 'change' ou 'blur' pour capturer la sélection dans la datalist
+        const paysInput = document.getElementById('pays_origine');
+        paysInput.addEventListener('change', (e) => this.toggleDateFields(e.target.value));
+        paysInput.addEventListener('blur', (e) => this.toggleDateFields(e.target.value));
+        
+        console.log("Forge ANOR : Système opérationnel.");
     },
 
     toggleDateFields: function(pays) {
         const camFields = document.getElementById('cameroonFields');
         const intFields = document.getElementById('internationalFields');
         
-        if (pays === "Cameroun") {
+        // Nettoyage de la saisie
+        const val = pays.trim();
+        
+        // Logique stricte demandée
+        if (val === "Cameroun") {
             camFields.style.display = "block";
             intFields.style.display = "none";
-        } else {
+        } else if (val !== "") {
             camFields.style.display = "none";
             intFields.style.display = "block";
+        } else {
+            camFields.style.display = "none";
+            intFields.style.display = "none";
         }
     },
 
@@ -32,8 +43,9 @@ const ForgeController = {
         const lot = document.getElementById('lot').value;
         const pays = document.getElementById('pays_origine').value;
         
-        // Récupération des dates selon le contexte
+        // Récupération dynamique selon la visibilité
         const dateFabrication = document.getElementById('date_fabrication')?.value || "";
+        const datePeremption = document.getElementById('date_peremption')?.value || "";
         const dateCertificat = document.getElementById('date_certificat_conformite')?.value || "";
 
         if (!nom || !lot || !pays) {
@@ -41,13 +53,15 @@ const ForgeController = {
             return;
         }
 
-        // SIGNATURE MÉTIER : La combinaison qui définit le sceau
-        // On ne lie pas la date à la génération pour éviter l'instabilité,
-        // mais on inclut les paramètres nécessaires à l'unicité.
         const signature = `${nom}_${lot}_${pays}`;
         
-        // On passe les métadonnées au Renderer
-        ForgeRenderer.render('seal-container', signature, { pays, dateFabrication, dateCertificat });
+        // Transmission au renderer avec métadonnées complètes
+        ForgeRenderer.render('seal-container', signature, { 
+            pays, 
+            dateFabrication, 
+            datePeremption, 
+            dateCertificat 
+        });
         
         document.getElementById('status').innerText = "SCEAU GÉNÉRÉ";
         document.getElementById('debug').innerText = signature;
@@ -57,7 +71,13 @@ const ForgeController = {
         document.getElementById('forgeForm').reset();
         document.getElementById('seal-container').innerHTML = '';
         document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('imagePlaceholder').style.display = 'block';
         document.getElementById('status').innerText = "PRÊT";
+        document.getElementById('debug').innerText = "-";
+        
+        // On force le masquage des champs de date
+        document.getElementById('cameroonFields').style.display = 'none';
+        document.getElementById('internationalFields').style.display = 'none';
     },
 
     handleImagePreview: function(event) {
@@ -68,6 +88,7 @@ const ForgeController = {
                 const img = document.getElementById('previewImg');
                 img.src = e.target.result;
                 img.style.display = 'block';
+                document.getElementById('imagePlaceholder').style.display = 'none';
             };
             reader.readAsDataURL(file);
         }
