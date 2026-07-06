@@ -1,54 +1,65 @@
 /**
  * forge.js - Contrôleur principal de la Forge ANOR
- * Gère les interactions utilisateur, la validation et l'orchestration du rendu.
  */
 
 import ForgeRenderer from './forge/forgeRenderer.js';
 
 const ForgeController = {
-    // Initialisation des écouteurs d'événements
     init: function() {
         document.getElementById('btnForge').addEventListener('click', () => this.handleForge());
         document.getElementById('btnReset').addEventListener('click', () => this.handleReset());
-        
-        // Gestion de l'affichage de l'image sélectionnée
         document.getElementById('visuel').addEventListener('change', (e) => this.handleImagePreview(e));
         
-        console.log("Forge ANOR : Système opérationnel.");
+        // Logique métier : Affichage conditionnel des champs de date selon le pays
+        document.getElementById('pays_origine').addEventListener('input', (e) => this.toggleDateFields(e.target.value));
     },
 
-    // Action de génération du sceau
+    toggleDateFields: function(pays) {
+        const camFields = document.getElementById('cameroonFields');
+        const intFields = document.getElementById('internationalFields');
+        
+        if (pays === "Cameroun") {
+            camFields.style.display = "block";
+            intFields.style.display = "none";
+        } else {
+            camFields.style.display = "none";
+            intFields.style.display = "block";
+        }
+    },
+
     handleForge: function() {
         const nom = document.getElementById('nom_produit').value;
         const lot = document.getElementById('lot').value;
+        const pays = document.getElementById('pays_origine').value;
         
-        if (!nom || !lot) {
-            alert("Veuillez remplir au moins le nom du produit et le lot.");
+        // Récupération des dates selon le contexte
+        const dateFabrication = document.getElementById('date_fabrication')?.value || "";
+        const dateCertificat = document.getElementById('date_certificat_conformite')?.value || "";
+
+        if (!nom || !lot || !pays) {
+            alert("Veuillez remplir le nom, le lot et le pays.");
             return;
         }
 
-        // Utilisation du nom et du lot pour créer une signature unique (clé)
-        const signature = `${nom}_${lot}`;
+        // SIGNATURE MÉTIER : La combinaison qui définit le sceau
+        // On ne lie pas la date à la génération pour éviter l'instabilité,
+        // mais on inclut les paramètres nécessaires à l'unicité.
+        const signature = `${nom}_${lot}_${pays}`;
         
-        // Appel au renderer
-        ForgeRenderer.render('seal-container', signature);
+        // On passe les métadonnées au Renderer
+        ForgeRenderer.render('seal-container', signature, { pays, dateFabrication, dateCertificat });
         
-        // Mise à jour de l'interface
-        document.getElementById('status').innerText = "GÉNÉRÉ";
+        document.getElementById('status').innerText = "SCEAU GÉNÉRÉ";
         document.getElementById('debug').innerText = signature;
     },
 
-    // Réinitialisation du formulaire et de la zone de prévisualisation
     handleReset: function() {
         document.getElementById('forgeForm').reset();
         document.getElementById('seal-container').innerHTML = '';
         document.getElementById('previewImg').style.display = 'none';
-        document.getElementById('imagePlaceholder').style.display = 'block';
         document.getElementById('status').innerText = "PRÊT";
-        document.getElementById('debug').innerText = "-";
     },
 
-    // Affichage de l'image choisie par l'utilisateur
     handleImagePreview: function(event) {
         const file = event.target.files[0];
         if (file) {
@@ -57,12 +68,10 @@ const ForgeController = {
                 const img = document.getElementById('previewImg');
                 img.src = e.target.result;
                 img.style.display = 'block';
-                document.getElementById('imagePlaceholder').style.display = 'none';
             };
             reader.readAsDataURL(file);
         }
     }
 };
 
-// Lancement du contrôleur au chargement du DOM
 document.addEventListener('DOMContentLoaded', () => ForgeController.init());
