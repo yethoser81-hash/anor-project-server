@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>ANOR • Forge Nationale</title>
     <link rel="stylesheet" href="./forge.css">
-    <script src="./jszip.min.js"></script>
 </head>
 <body>
 
@@ -72,12 +71,7 @@
                     <div class="field">
                         <label>Pays d'origine</label>
                         <input id="pays_origine" list="listePays" autocomplete="off" placeholder="Choisir un pays">
-                        <datalist id="listePays">
-                            <option value="Cameroun">
-                            <option value="France">
-                            <option value="Chine">
-                            <option value="Allemagne">
-                        </datalist>
+                        <datalist id="listePays"></datalist>
                     </div>
                 </div>
 
@@ -131,7 +125,7 @@
                 <div class="previewBox">
                     <div class="previewTitle">IMAGE DU PRODUIT</div>
                     <div class="imageFrame">
-                        <img id="previewImg" src="" alt="Produit">
+                        <img id="previewImg" src="" alt="Produit" style="display:none;width:100%;height:100%;object-fit:contain;">
                         <div id="imagePlaceholder" class="placeholder">Aucune image sélectionnée</div>
                     </div>
                 </div>
@@ -152,34 +146,16 @@
 </main>
 
 <script>
-    // Logique conditionnelle pour afficher les champs selon le pays
-    document.getElementById('pays_origine').addEventListener('input', function(e) {
-        const val = e.target.value;
-        const cam = document.getElementById('cameroonFields');
-        const int = document.getElementById('internationalFields');
-        
-        if (val === "Cameroun") {
-            cam.style.display = "block";
-            int.style.display = "none";
-        } else if (val !== "") {
-            cam.style.display = "none";
-            int.style.display = "block";
-        } else {
-            cam.style.display = "none";
-            int.style.display = "none";
-        }
-    });
-
     window.API = location.hostname==="localhost" || location.hostname==="127.0.0.1" 
         ? "http://localhost:10000/api" : "https://anor-api.onrender.com/api";
 </script>
 
-<script src="/forge/bibliotheque_formes.js"></script>
-<script src="/forge/bibliotheque_glyphes.js"></script>
-<script src="/forge/compositeur.js"></script>
-<script src="/forge/dessin_primitives.js"></script>
-<script src="/forge/dessin_glyphes.js"></script>
-<script src="/forge/forgeRenderer.js"></script>
-<script src="/forge/forge.js"></script>
+<script src="./forge/bibliotheque_formes.js"></script>
+<script src="./forge/bibliotheque_glyphes.js"></script>
+<script src="./forge/compositeur.js"></script>
+<script src="./forge/dessin_primitives.js"></script>
+<script src="./forge/dessin_glyphes.js"></script>
+<script src="./forge/forgeRenderer.js"></script>
+<script src="./forge/forge.js"></script>
 </body>
 </html>

@@ -143,11 +143,12 @@ previewImage(event) {
 
     reader.readAsDataURL(fichier);
 
-}
+},
 
     /* ==========================================================
        RESET
     ========================================================== */
+    
     reset() {
         document.getElementById("forgeForm").reset();
         const seal = document.getElementById("seal-container");

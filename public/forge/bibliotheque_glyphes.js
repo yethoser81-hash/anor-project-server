@@ -3,7 +3,17 @@
  * Définit les glyphes utilisés pour la génération, liés à leurs valeurs de vérification.
  */
 
-const FormesRef = require('./bibliotheque_formes.js');
+let FormesRef;
+
+if(typeof module!=="undefined" && module.exports){
+
+    FormesRef=require("./bibliotheque_formes.js");
+
+}else{
+
+    FormesRef=window.BIBLIOTHEQUE_FORMES;
+
+}
 
 // Remplace ton ancienne ligne par ce bloc sécurisé :
 const getVal = (nom) => {
@@ -14,7 +24,7 @@ const getVal = (nom) => {
     return forme.valeur;
 };
 
-const G = [
+const BIBLIOTHEQUE_GLYPHES = [
     // Carrés
     { id: "S01", forme: "carre", plein: true, valeur: getVal("carre") },
     { id: "S02", forme: "carre", plein: false, valeur: getVal("carre") },
@@ -39,4 +49,10 @@ const G = [
     { id: "B02", forme: "barre_verticale", plein: false, valeur: getVal("barre_verticale") }
 ];
 
-module.exports = G;
+if(typeof module!=="undefined" && module.exports){
+    module.exports = BIBLIOTHEQUE_GLYPHES;
+}
+
+if(typeof window!=="undefined"){
+    window.BIBLIOTHEQUE_GLYPHES = BIBLIOTHEQUE_GLYPHES;
+}

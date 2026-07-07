@@ -42,4 +42,10 @@ const BIBLIOTHEQUE_FORMES = [
 
 ];
 
-module.exports = BIBLIOTHEQUE_FORMES;
+if (typeof module !== "undefined" && module.exports) {
+    module.exports = BIBLIOTHEQUE_FORMES;
+}
+
+if (typeof window !== "undefined") {
+    window.BIBLIOTHEQUE_FORMES = BIBLIOTHEQUE_FORMES;
+}

@@ -10,16 +10,16 @@ const Primitives = {
      * @returns {string} - Chaîne contenant le code SVG de la forme
      */
     creerForme: function(data) {
-        const forme = data.forme || "square";
-        const estPlein = data.plein ? "fill='black'" : "fill='none' stroke='black'";
+        const forme = data.forme || "carre";
+        const estPlein = data.plein ? "fill='#0057B8'" : "fill='none' stroke='#0057B8'";
         const id = data.id || "UNKNOWN";
 
         // Génération d'un fragment SVG
         // On utilise un groupe <g> pour encapsuler l'ID et la forme
         let svgContent = `<g data-id="${id}" class="shape ${forme}">`;
         
-        if (forme === "circle") {
-            svgContent += `<circle cx="5" cy="5" r="4" ${estPlein} />`;
+        if (forme === "cercle") {
+            svgContent += `<cercle cx="5" cy="5" r="4" ${estPlein} />`;
         } else {
             // Par défaut, un carré
             svgContent += `<rect x="1" y="1" width="8" height="8" ${estPlein} />`;
