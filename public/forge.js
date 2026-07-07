@@ -135,7 +135,6 @@ const ForgeController = {
 
         const placeholder = document.getElementById("imagePlaceholder");
         if (placeholder) placeholder.style.display = "block";
-
         document.getElementById("status").innerText = "PRÊT";
         document.getElementById("debug").innerText = "-";
         this.gestionPays("");
