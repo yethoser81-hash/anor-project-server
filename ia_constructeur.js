@@ -6,7 +6,7 @@
  * ==========================================================
  */
 
-const G = require("./forge/bibliotheque_glyphes");
+const G = require("../public/forge/dessin_glyphes");
 
 /**
  * Construit une séquence sécurisée.
