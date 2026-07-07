@@ -3,7 +3,7 @@
  * Moteur unifié : Forge et Décodage.
  */
 const crypto = require("crypto");
-const G = require("./forge/bibliotheque_glyphes");
+const G = require('./public/forge/bibliotheque_glyphes')
 
 const BIT_LENGTH = 90;
 const ZONES = Object.freeze({ NOYAU: [0, 20], TRANSITION: [20, 50], PERIPHERIE: [50, 90] });
