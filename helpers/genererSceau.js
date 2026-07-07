@@ -7,8 +7,8 @@ const fs = require("fs");
 const path = require("path");
 const { createCanvas } = require("canvas");
 
-const Compositeur = require("../forge/compositeur");
-const DessinGlyphes = require("../forge/dessin_glyphes");
+const Compositeur = require('../public/forge/compositeur');
+const DessinGlyphes = require("../public/forge/dessin_glyphes");
 
 async function genererSceauPNG(signature, identifiant)
 {
