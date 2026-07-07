@@ -8,26 +8,45 @@ const DessinGlyphes = require('./dessin_glyphes.js');
 const Compositeur = require('./compositeur.js');
 
 const ForgeRenderer = {
-    /**
-     * @param {string} containerId - ID du conteneur HTML
-     * @param {string} cle - La clé unique pour générer le sceau (ex: ID utilisateur)
-     */
-    render: function(containerId, cle = "SERGES_ANOR_DEFAULT") {
+
+    render(containerId, cle = "ANOR_DEFAULT") {
+
         const container = document.getElementById(containerId);
-        container.innerHTML = '';
-        
-        // 1. On récupère les instructions de composition via le Compositeur
+
+        if (!container) {
+            console.error("Container introuvable :", containerId);
+            return;
+        }
+
+        container.innerHTML = "";
+
         const instructions = Compositeur.composer(cle);
 
-        // 2. On exécute le rendu selon les instructions reçues
-        instructions.forEach((inst) => {
-            // DessinGlyphes.creerGlyphe a été adapté pour accepter un glyphe spécifique
-            const glypheEl = DessinGlyphes.creerGlyphe(inst.angle, inst.rayon, inst.glyphe);
-            container.appendChild(glypheEl);
+        instructions.forEach(inst => {
+
+            const glyphe = DessinGlyphes.creerGlyphe(
+                inst.angle,
+                inst.rayon,
+                inst.glyphe
+            );
+
+            container.appendChild(glyphe);
+
         });
 
-        container.style.display = 'block';
+        container.style.display = "block";
+
     }
+
 };
 
-module.exports = ForgeRenderer;
+
+// Backend
+if (typeof module !== "undefined") {
+    module.exports = ForgeRenderer;
+}
+
+// Navigateur
+if (typeof window !== "undefined") {
+    window.ForgeRenderer = ForgeRenderer;
+}
