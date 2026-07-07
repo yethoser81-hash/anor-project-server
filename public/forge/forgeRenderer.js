@@ -1,52 +1,40 @@
 /**
  * forgeRenderer.js
  * Moteur de rendu du Sceau ANOR
- * Orchestre le Compositeur pour générer des sceaux déterministes.
+ * Désormais synchronisé avec la génération SVG
  */
 
-const DessinGlyphes = require('./dessin_glyphes.js');
-const Compositeur = require('./compositeur.js');
-
 const ForgeRenderer = {
-
     render(containerId, cle = "ANOR_DEFAULT") {
-
         const container = document.getElementById(containerId);
-
         if (!container) {
             console.error("Container introuvable :", containerId);
             return;
         }
 
-        container.innerHTML = "";
+        // 1. Initialisation de la structure SVG
+        // On crée une zone de dessin de 500x500 (pour couvrir le rayon de 250)
+        let svgCode = `<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">`;
 
-        const instructions = Compositeur.composer(cle);
+        // 2. Récupération des instructions
+        const instructions = window.Compositeur.composer(cle);
 
+        // 3. Assemblage des glyphes (chaînes SVG)
         instructions.forEach(inst => {
-
-            const glyphe = DessinGlyphes.creerGlyphe(
+            svgCode += window.DessinGlyphes.creerGlyphe(
                 inst.angle,
                 inst.rayon,
                 inst.glyphe
             );
-
-            container.appendChild(glyphe);
-
         });
 
+        // 4. Fermeture du tag SVG
+        svgCode += `</svg>`;
+
+        // 5. Injection directe dans le DOM
+        container.innerHTML = svgCode;
         container.style.display = "block";
-
     }
-
 };
 
-
-// Backend
-if (typeof module !== "undefined") {
-    module.exports = ForgeRenderer;
-}
-
-// Navigateur
-if (typeof window !== "undefined") {
-    window.ForgeRenderer = ForgeRenderer;
-}
+window.ForgeRenderer = ForgeRenderer;

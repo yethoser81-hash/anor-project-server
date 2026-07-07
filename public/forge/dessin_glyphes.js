@@ -4,33 +4,46 @@
  * Il ne décide plus du choix du glyphe, il l'affiche selon les instructions reçues.
  */
 
-const Primitives = require('./dessin_primitives.js');
+// Gestion d'environnement : on utilise window.Primitives dans le navigateur, require sinon.
+let Primitives;
+if (typeof module !== "undefined" && module.exports) {
+    Primitives = require('./dessin_primitives.js');
+} else {
+    Primitives = window.Primitives;
+}
 
 const DessinGlyphes = {
     /**
-     * @param {number} angle - Angle de positionnement sur l'anneau
+     * @param {number} angle - Angle de positionnement sur l'anneau (en radians)
      * @param {number} rayon - Rayon de l'anneau
-     * @param {Object} glypheData - Les données du glyphe (id, forme, plein) fournies par le Compositeur
+     * @param {Object} glypheData - Les données du glyphe fournies par le Compositeur
+     * @returns {string} - Un fragment de code SVG représentant le glyphe positionné
      */
     creerGlyphe: function(angle, rayon, glypheData) {
-        // 1. Création de la primitive via le module Primitives
-        const el = Primitives.creerForme(glypheData);
+        // 1. Création de la primitive (retourne une chaîne SVG)
+        const svgPrimitive = Primitives.creerForme(glypheData);
         
-        // 2. Calcul des coordonnées cartésiennes pour le placement
-        // Le centre du sceau est supposé être à 250px
+        // 2. Calcul des coordonnées pour le placement
+        // Le centre du sceau est supposé être à 250, 250
         const x = 250 + rayon * Math.cos(angle) - 5;
         const y = 250 + rayon * Math.sin(angle) - 5;
         
-        // 3. Application du style positionnel
-        el.style.position = 'absolute'; // S'assure que l'élément peut bouger
-        el.style.left = `${x}px`;
-        el.style.top = `${y}px`;
+        // 3. Transformation pour le placement et la rotation
+        // On retourne un groupe SVG (<g>) qui contient la primitive
+        // La rotation est convertie en degrés pour le SVG
+        const angleDeg = angle * (180 / Math.PI);
         
-        // 4. Rotation pour que la forme suive la courbure de l'anneau
-        el.style.transform = `rotate(${angle}rad)`;
-        
-        return el;
+        return `
+            <g transform="translate(${x}, ${y}) rotate(${angleDeg})">
+                ${svgPrimitive}
+            </g>`;
     }
 };
 
-module.exports = DessinGlyphes;
+// Exports
+if (typeof module !== "undefined") {
+    module.exports = DessinGlyphes;
+}
+if (typeof window !== "undefined") {
+    window.DessinGlyphes = DessinGlyphes;
+}

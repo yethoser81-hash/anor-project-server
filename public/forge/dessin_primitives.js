@@ -1,29 +1,40 @@
 /**
  * dessin_primitives.js
- * Responsable de la création des nœuds DOM bruts.
- * Chaque élément reçoit son identifiant unique pour le scan APK.
+ * Responsable de la génération du code SVG (format universel).
+ * Chaque élément est une chaîne de texte SVG pour garantir la compatibilité serveur/client.
  */
 
 const Primitives = {
     /**
      * @param {Object} data - Objet contenant {id, forme, plein}
-     * @returns {HTMLElement}
+     * @returns {string} - Chaîne contenant le code SVG de la forme
      */
     creerForme: function(data) {
-        const el = document.createElement('div');
+        const forme = data.forme || "square";
+        const estPlein = data.plein ? "fill='black'" : "fill='none' stroke='black'";
+        const id = data.id || "UNKNOWN";
+
+        // Génération d'un fragment SVG
+        // On utilise un groupe <g> pour encapsuler l'ID et la forme
+        let svgContent = `<g data-id="${id}" class="shape ${forme}">`;
         
-        // Construction des classes CSS
-        const baseClass = "shape";
-        const formClass = data.forme || "square";
-        const fillClass = data.plein ? "filled" : "";
+        if (forme === "circle") {
+            svgContent += `<circle cx="5" cy="5" r="4" ${estPlein} />`;
+        } else {
+            // Par défaut, un carré
+            svgContent += `<rect x="1" y="1" width="8" height="8" ${estPlein} />`;
+        }
         
-        el.className = `${baseClass} ${formClass} ${fillClass}`.trim();
+        svgContent += `</g>`;
         
-        // ID vital pour la lecture par l'APK
-        el.setAttribute('data-id', data.id || "UNKNOWN");
-        
-        return el;
+        return svgContent;
     }
 };
 
-module.exports = Primitives;
+// Exports
+if (typeof module !== "undefined") {
+    module.exports = Primitives;
+}
+if (typeof window !== "undefined") {
+    window.Primitives = Primitives;
+}

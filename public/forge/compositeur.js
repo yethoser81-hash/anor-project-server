@@ -4,7 +4,16 @@
  * Il transforme une "clé" en une série de instructions de rendu.
  */
 
-const G = require('./bibliotheque_glyphes.js');
+// Gestion d'environnement pour permettre au code de tourner sur Navigateur ET Serveur
+let G;
+if (typeof module !== "undefined" && module.exports) {
+    // Environnement Serveur (Node.js)
+    G = require('./bibliotheque_glyphes.js');
+} else {
+    // Environnement Navigateur
+    // On s'assure que la bibliothèque est accessible via window
+    G = window.BIBLIOTHEQUE_GLYPHES;
+}
 
 const Compositeur = {
     // Définit les règles de placement (le "ADN" du sceau)
@@ -41,4 +50,12 @@ const Compositeur = {
     }
 };
 
-module.exports = Compositeur;
+// Export pour le Backend
+if (typeof module !== "undefined") {
+    module.exports = Compositeur;
+}
+
+// Export pour le Navigateur
+if (typeof window !== "undefined") {
+    window.Compositeur = Compositeur;
+}
