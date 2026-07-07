@@ -5,32 +5,38 @@
 
 const FormesRef = require('./bibliotheque_formes.js');
 
-// Fonction utilitaire pour récupérer la valeur selon le nom
-const getVal = (nom) => FormesRef.find(f => f.nom === nom).valeur;
+// Remplace ton ancienne ligne par ce bloc sécurisé :
+const getVal = (nom) => {
+    const forme = FormesRef.find(f => f.nom === nom);
+    if (!forme) {
+        throw new Error(`Erreur critique : La forme '${nom}' n'est pas définie dans bibliotheque_formes.js`);
+    }
+    return forme.valeur;
+};
 
 const G = [
     // Carrés
-    { id: "S01", forme: "square", plein: true, valeur: getVal("square") },
-    { id: "S02", forme: "square", plein: false, valeur: getVal("square") },
+    { id: "S01", forme: "carre", plein: true, valeur: getVal("carre") },
+    { id: "S02", forme: "carre", plein: false, valeur: getVal("carre") },
     
     // Rectangles
-    { id: "R01", forme: "rect", plein: true, valeur: getVal("rect") },
-    { id: "R02", forme: "rect", plein: false, valeur: getVal("rect") },
+    { id: "R01", forme: "rectangle", plein: true, valeur: getVal("rectangle") },
+    { id: "R02", forme: "rectangle", plein: false, valeur: getVal("rectangle") },
     
     // Cercles
-    { id: "C01", forme: "circle", plein: true, valeur: getVal("circle") },
-    { id: "C02", forme: "circle", plein: false, valeur: getVal("circle") },
+    { id: "C01", forme: "cercle", plein: true, valeur: getVal("cercle") },
+    { id: "C02", forme: "cercle", plein: false, valeur: getVal("cercle") },
     
     // Losanges
-    { id: "D01", forme: "diamond", plein: true, valeur: getVal("diamond") },
-    { id: "D02", forme: "diamond", plein: false, valeur: getVal("diamond") },
+    { id: "D01", forme: "losange", plein: true, valeur: getVal("losange") },
+    { id: "D02", forme: "losange", plein: false, valeur: getVal("losange") },
     
-    // Croix et Plus
-    { id: "P01", forme: "plus", plein: false, valeur: getVal("plus") },
+    // Croix
+    { id: "P01", forme: "croix", plein: false, valeur: getVal("croix") },
     
     // Barres
-    { id: "B01", forme: "bar", plein: true, valeur: getVal("bar") },
-    { id: "B02", forme: "bar", plein: false, valeur: getVal("bar") }
+    { id: "B01", forme: "barre_verticale", plein: true, valeur: getVal("barre_verticale") },
+    { id: "B02", forme: "barre_verticale", plein: false, valeur: getVal("barre_verticale") }
 ];
 
 module.exports = G;
