@@ -104,20 +104,46 @@ const ForgeController = {
     /* ==========================================================
        IMAGE PRODUIT
     ========================================================== */
-    previewImage(event) {
-        const fichier = event.target.files[0];
-        if (!fichier) return;
+    /* ==========================================================
+   IMAGE PRODUIT
+========================================================== */
+previewImage(event) {
 
-        const reader = new FileReader();
-        reader.onload = e => {
-            const img = document.getElementById("previewImg");
-            const placeholder = document.getElementById("imagePlaceholder");
-            img.src = e.target.result;
+    const fichier = event.target.files[0];
+
+    if (!fichier) return;
+
+    const img = document.getElementById("previewImg");
+    const placeholder = document.getElementById("imagePlaceholder");
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+        img.src = e.target.result;
+
+        img.onload = function(){
+
             img.style.display = "block";
-            if (placeholder) placeholder.style.display = "none";
+
+            img.style.visibility = "visible";
+
+            img.style.width = "100%";
+
+            img.style.height = "100%";
+
+            img.style.objectFit = "contain";
+
+            if(placeholder)
+                placeholder.style.display = "none";
+
         };
-        reader.readAsDataURL(fichier);
-    },
+
+    };
+
+    reader.readAsDataURL(fichier);
+
+}
 
     /* ==========================================================
        RESET
