@@ -7,8 +7,10 @@ const fs = require("fs");
 const path = require("path");
 const { createCanvas } = require("canvas");
 
-const Compositeur = require('../public/forge/compositeur');
-const DessinGlyphes = require("../public/forge/dessin_glyphes");
+// Au lieu de ../public/forge/compositeur
+const path = require('path');
+const Compositeur = require(path.join(__dirname, '..', 'public', 'forge', 'compositeur.js'));
+const DessinGlyphes = require(path.join(__dirname, '..', 'public', 'forge', 'dessin_glyphes.js'));
 
 async function genererSceauPNG(signature, identifiant)
 {
