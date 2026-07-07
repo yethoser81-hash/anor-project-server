@@ -1,12 +1,15 @@
 /**
  * ==========================================================
- * ia_constructeur.js - ANOR V7 (Version Production)
+ * ia_constructeur.js - ANOR V10 (Version Production)
  * Rôle : Transforme les bits de la signature en glyphes 
  * concrets et vérifiables (forme + état).
  * ==========================================================
  */
 
-const G = require("../public/forge/dessin_glyphes");
+const path = require("path");
+
+// Correction du chemin d'import pour la production sur Render
+const G = require(path.join(__dirname, "public", "forge", "dessin_glyphes.js"));
 
 /**
  * Construit une séquence sécurisée.
