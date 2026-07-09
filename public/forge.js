@@ -202,7 +202,7 @@ const ForgeController = {
         const image = new Image();
 
         image.onload = () => {
-            const SIZE = 4096;
+            const SIZE = 2048;
 
             const canvas = document.createElement("canvas");
             canvas.width = SIZE;
