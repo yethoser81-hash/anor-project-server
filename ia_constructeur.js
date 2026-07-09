@@ -17,6 +17,15 @@ const GLYPHES = require(
     )
 );
 
+const Compositeur = require(
+    path.join(
+        __dirname,
+        "public",
+        "forge",
+        "compositeur.js"
+    )
+);
+
 const LONGUEURS = Object.freeze({
     NOYAU:20,
     TRANSITION:30,
@@ -148,12 +157,36 @@ function bibliothequePlate(biblio){
 
 }
 
+function construireBibliothequeForge(signature){
+
+    const instructions =
+        Compositeur.composer(signature);
+
+    return instructions.map((g,index)=>({
+
+        index,
+
+        forme:g.glyphe.forme,
+
+        plein:g.glyphe.plein,
+
+        valeur:g.glyphe.valeur,
+
+        angle:g.angle,
+
+        rayon:g.rayon
+
+    }));
+
+}
 
 module.exports={
 
     construireSequence:construireSequenceSimple,
 
     construireBibliotheque,
+
+    construireBibliothequeForge,
 
     bibliothequePlate
 

@@ -9,8 +9,9 @@ Moteur final anti-contrefaçon
 import math
 
 
-TOLERANCE_ANGLE = 8
-TOLERANCE_RAYON = 15
+TOLERANCE_ANGLE = 6          # degrés
+TOLERANCE_RAYON = 12         # pixels
+TOLERANCE_POSITION = 0       # le numéro de position doit être identique
 
 
 class ComparateurCryptoGeometrique:
@@ -55,6 +56,37 @@ class ComparateurCryptoGeometrique:
             detecte = glyphes_detectes[i]
             attendu = glyphes_reference[i]
 
+            if detecte["anneau"] != attendu["anneau"]:
+
+                self.ecarts.append({
+
+                    "index": i,
+
+                    "type": "anneau",
+
+                    "attendu": attendu["anneau"],
+
+                    "detecte": detecte["anneau"]
+
+                })
+
+                continue
+          
+            if detecte["position"] != attendu["position"]:
+
+                self.ecarts.append({
+
+                    "index": i,
+
+                    "type": "position",
+
+                    "attendu": attendu["position"],
+
+                    "detecte": detecte["position"]
+
+                })
+
+                continue
 
             if detecte["forme"] != attendu["forme"]:
 
@@ -87,10 +119,12 @@ class ComparateurCryptoGeometrique:
 
 
             diff_angle = abs(
-                detecte["angle"] -
-                attendu["angle"]
+            detecte["angle"] -
+            attendu["angle"]
             )
 
+            if diff_angle > 180:
+                diff_angle = 360 - diff_angle
 
             if diff_angle > TOLERANCE_ANGLE:
 
@@ -136,23 +170,27 @@ class ComparateurCryptoGeometrique:
         )
 
 
-        score = (correspondances / total) * 100
+        score = round(
+        (correspondances / total) * 100,
+        2
+        )
 
+        erreurs = len(self.ecarts)
 
 
         return {
 
-            "authentique":
-                score >= 95,
+            "authentique": score >= 95,
 
-            "score":
-                round(score,2),
+            "score": score,
 
-            "ecarts":
-                self.ecarts,
+            "correspondances": correspondances,
 
-            "niveau":
-                self.niveau(score)
+            "erreurs": erreurs,
+
+            "details": self.ecarts,
+
+            "niveau": self.niveau(score)
 
         }
 
@@ -163,10 +201,10 @@ class ComparateurCryptoGeometrique:
         if score >= 98:
             return "CONFORME"
 
-        if score >=95:
+        if score >= 95:
             return "ACCEPTABLE"
 
-        if score >=80:
+        if score >= 80:
             return "SUSPECT"
 
         return "CONTREFACON_PROBABLE"

@@ -23,6 +23,20 @@ SURFACE_MIN = 30
 
 RAYONS_FORGE = (210, 170, 130)
 DENSITES_FORGE = (34, 28, 22)
+TOLERANCE_RAYON = 12
+TOLERANCE_ANGLE = 360 / 34 / 2
+
+RAYONS_PAR_ANNEAU = {
+    0:130,
+    1:170,
+    2:210
+}
+
+NB_GLYPHES_PAR_ANNEAU = {
+    0:22,
+    1:28,
+    2:34
+}
 
 ANGLE_COMPLET = math.pi * 2
 
@@ -232,6 +246,19 @@ class VisionDecoder:
     def determiner_anneau(self, rayon):
         distances = [abs(rayon - r) for r in RAYONS_FORGE]
         return distances.index(min(distances))
+    
+    def determiner_position(self, angle, anneau):
+
+    total = NB_GLYPHES_PAR_ANNEAU[anneau]
+
+    pas = ANGLE_COMPLET / total
+
+    position = int(round(angle / pas))
+
+    if position >= total:
+        position = 0
+
+    return position
 
     def reconstruire_glyphes(self):
         self.glyphes = []
@@ -240,17 +267,34 @@ class VisionDecoder:
             anneau = self.determiner_anneau(rayon)
             if p.forme == "inconnu":
                 continue
-            self.glyphes.append(
-                GlypheReconstruit(
-                    forme=p.forme,
-                    plein=p.plein,
-                    angle=angle,
-                    rayon=rayon,
-                    anneau=anneau,
-                    x=p.x,
-                    y=p.y
-                )
-            )
+            position = self.determiner_position(
+    angle,
+    anneau
+)
+
+self.glyphes.append(
+
+    {
+
+        "forme":p.forme,
+
+        "plein":p.plein,
+
+        "angle":angle,
+
+        "rayon":rayon,
+
+        "anneau":anneau,
+
+        "position":position,
+
+        "x":p.x,
+
+        "y":p.y
+
+    }
+
+)
         return self.glyphes
 
     # ==========================================================
@@ -263,7 +307,7 @@ class VisionDecoder:
             anneaux[g.anneau].append(g)
         resultat = []
         for numero in [2, 1, 0]:
-            elements = sorted(anneaux[numero], key=lambda g: g.angle)
+            elements = sorted(anneaux[numero],key=lambda g:g["position"] )
             for g in elements:
                 resultat.append({
                     "forme": g.forme,
