@@ -12,9 +12,11 @@ const fs = require("fs");
 const crypto = require("crypto");
 const multer = require("multer");
 const JSZip = require("jszip");
+const ExcelJS = require("exceljs");
+const PDFDocument = require("pdfkit");
 const { createClient } = require("@supabase/supabase-js");
 
-// Moteur de rendu partagé (Logique identique au frontend)
+// Correction : On utilise une approche de module compatible
 const Compositeur = require("./public/forge/compositeur.js");
 
 // Helpers de génération
@@ -34,7 +36,15 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+
+// Configuration statique explicite
+app.use(express.static(path.join(__dirname, "public"), {
+    setHeaders: (res, path) => {
+        if (path.endsWith(".js")) {
+            res.setHeader("Content-Type", "application/javascript");
+        }
+    }
+}));
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -65,19 +75,16 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
         const { nom_produit, nom_producteur, lot, pays_origine, composition, type_emballage } = body;
         const quantite = parseInt(body.quantite || 1);
         
-        // 1. Signature synchronisée
         const signature = [nom_produit, nom_producteur, lot, pays_origine, quantite].join("_");
         const identifiant = genererNumeroForge();
         const serialisation = genererSerialisation(quantite);
         
-        // 2. Construction ADN (Compositeur partagé)
         const instructions = Compositeur.composer(signature);
         const bibliotheque = construireBibliotheque(signature);
 
         const tempFolder = path.join(__dirname, "generated", identifiant);
         fs.mkdirSync(tempFolder, { recursive: true });
 
-        // 3. Génération Sceau & Documents
         const sceauPath = await genererSceau(signature, identifiant, instructions);
         fs.writeFileSync(path.join(tempFolder, "05_Serialisation.csv"), "NumeroSerie\n" + serialisation.join("\n"), "utf8");
         await genererXLSX(serialisation, path.join(tempFolder, "05_Serialisation.xlsx"));
@@ -86,7 +93,6 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
         await genererJuridiquePDF(path.join(tempFolder, "04_Avertissement_Juridique.pdf"));
         await genererPartenairesPDF(path.join(tempFolder, "06_Partenaires_Impression.pdf"));
 
-        // 4. Upload Storage Supabase
         let visuelURL = null;
         if (req.files?.visuel) {
             const f = req.files.visuel[0];
@@ -103,11 +109,9 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
             certURL = supabase.storage.from("certificats").getPublicUrl(pathS).data.publicUrl;
         }
 
-        // 5. Base de données
         const insertion = { identifiant, nom_produit, nom_producteur, lot, pays_origine, quantite, signature, bibliotheque_formes: JSON.stringify(bibliotheque), serialisation: JSON.stringify(serialisation), visuel_url: visuelURL, certificat_url: certURL };
         await supabase.from("sya_produit_certifie").insert(insertion);
 
-        // 6. ZIP Final
         const zip = new JSZip();
         zip.file("00_Sceau_Maitre.png", fs.readFileSync(sceauPath));
         if (req.files?.visuel) zip.file("01_Visuel_Produit" + path.extname(req.files.visuel[0].originalname), req.files.visuel[0].buffer);
@@ -125,6 +129,60 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
         const kitURL = supabase.storage.from("kits").getPublicUrl(`kits/${identifiant}.zip`).data.publicUrl;
 
         res.json({ success: true, identifiant, kit: kitURL });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+/* ==========================================================
+   ROUTE API FORGE KIT (DÉDIÉE)
+========================================================== */
+
+app.post("/api/forge/kit", async (req, res) => {
+    try {
+        const { produit, producteur, lot, quantite, pays, signature, svg } = req.body;
+        const zip = new JSZip();
+
+        // 01 Sceau maître
+        zip.file("01_SCEAU_MAITRE.svg", svg);
+
+        // 02 Informations produit
+        zip.file("02_PRODUIT.json", JSON.stringify({ produit, producteur, lot, quantite, pays, signature, date: new Date().toISOString() }, null, 4));
+
+        // 03 Signature
+        zip.file("03_SIGNATURE.txt", signature);
+
+        // 04 Sérialisation CSV
+        let csv = "Numero\n";
+        for (let i = 1; i <= Number(quantite); i++) {
+            csv += `${lot}-${String(i).padStart(6, "0")}\n`;
+        }
+        zip.file("04_SERIALISATION.csv", csv);
+
+        // 05 XML
+        let xml = '<?xml version="1.0"?>\n<serialisation>\n';
+        for (let i = 1; i <= Number(quantite); i++) {
+            xml += `   <numero>${lot}-${String(i).padStart(6, "0")}</numero>\n`;
+        }
+        xml += "</serialisation>";
+        zip.file("05_SERIALISATION.xml", xml);
+
+        // 06 XLSX
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet("Serialisation");
+        ws.columns = [{ header: "Numero", key: "numero", width: 35 }];
+        for (let i = 1; i <= Number(quantite); i++) {
+            ws.addRow({ numero: `${lot}-${String(i).padStart(6, "0")}` });
+        }
+        const xlsxBuffer = await wb.xlsx.writeBuffer();
+        zip.file("06_SERIALISATION.xlsx", xlsxBuffer);
+
+        // ZIP
+        const contenu = await zip.generateAsync({ type: "nodebuffer" });
+        res.setHeader("Content-Type", "application/zip");
+        res.setHeader("Content-Disposition", `attachment; filename=KIT_ANOR_${lot}.zip`);
+        res.send(contenu);
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: err.message });

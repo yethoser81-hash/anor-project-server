@@ -1,63 +1,160 @@
 /**
  * ==========================================================
- * ia_constructeur.js - ANOR V10 (Version Production)
- * Rôle : Transforme les bits de la signature en glyphes 
- * concrets et vérifiables (forme + état).
+ * ia_constructeur.js
+ * ANOR V10
+ * Construction de la bibliothèque géométrique officielle
  * ==========================================================
  */
 
 const path = require("path");
 
-// Correction du chemin d'import pour la production sur Render
-const G = require(path.join(__dirname, "public", "forge", "dessin_glyphes.js"));
+const GLYPHES = require(
+    path.join(
+        __dirname,
+        "public",
+        "forge",
+        "bibliotheque_glyphes.js"
+    )
+);
 
-/**
- * Construit une séquence sécurisée.
- * Chaque bloc de 5 bits est converti en index, puis nous récupérons
- * le glyphe correspondant dans la bibliothèque.
- */
-function construireSequence(bits) {
-    if (!bits || bits.length === 0) return [];
+const LONGUEURS = Object.freeze({
+    NOYAU:20,
+    TRANSITION:30,
+    PERIPHERIE:40
+});
 
-    const sequence = [];
-    // On traite par blocs de 5 bits pour une granularité de 32 combinaisons (2^5)
-    for (let i = 0; i < bits.length; i += 5) {
-        const bloc = bits.substring(i, i + 5);
-        
-        if (bloc.length === 5) {
-            const idx = parseInt(bloc, 2) % G.length;
-            const glyphe = G[idx];
-            
-            // Injection de métadonnées pour la vérification ultérieure par le serveur
-            sequence.push({
-                id: glyphe.id,
-                nom: glyphe.forme, // Square, Circle, etc.
-                est_plein: glyphe.plein, // Crucial pour l'intégrité du sceau
-                valeur_reelle: glyphe.valeur
-            });
-        }
+
+function construireSequence(bits, anneau){
+
+    if(!bits)
+        return [];
+
+    const resultat=[];
+
+    for(let i=0;i<bits.length;i+=5){
+
+        const bloc=bits.substring(i,i+5);
+
+        if(bloc.length!==5)
+            continue;
+
+        const index=parseInt(bloc,2)%GLYPHES.length;
+
+        const g=GLYPHES[index];
+
+        resultat.push({
+
+            id:g.id,
+
+            forme:g.forme,
+
+            plein:g.plein,
+
+            valeur:g.valeur,
+
+            anneau:anneau,
+
+            position:i/5,
+
+            bits:bloc
+
+        });
+
     }
-    return sequence;
+
+    return resultat;
+
 }
 
-/**
- * Construit la bibliothèque complète pour un sceau.
- * Permet au serveur de comparer la structure totale [Noyau + Transition + Périphérie]
- */
-function construireBibliotheque(bitsComplets) {
-    // Vérification de l'intégrité (Rappel : 90 bits requis)
-    if (bitsComplets.length < 90) {
-        throw new Error("Erreur de sécurité : Séquence binaire incomplète (90 bits requis).");
-    }
 
-    return {
-        noyau: construireSequence(bitsComplets.substring(0, 20)),
-        transition: construireSequence(bitsComplets.substring(20, 50)),
-        peripherie: construireSequence(bitsComplets.substring(50, 90))
+function construireBibliotheque(signatureBinaire){
+
+    if(typeof signatureBinaire!=="string")
+        throw new Error("Signature invalide");
+
+    if(signatureBinaire.length<90)
+        throw new Error("Signature binaire incomplète (90 bits requis)");
+
+    const noyauBits=
+        signatureBinaire.substring(
+            0,
+            LONGUEURS.NOYAU
+        );
+
+    const transitionBits=
+        signatureBinaire.substring(
+            LONGUEURS.NOYAU,
+            LONGUEURS.NOYAU+
+            LONGUEURS.TRANSITION
+        );
+
+    const peripherieBits=
+        signatureBinaire.substring(
+            LONGUEURS.NOYAU+
+            LONGUEURS.TRANSITION,
+            90
+        );
+
+    return{
+
+        noyau:
+            construireSequence(
+                noyauBits,
+                2
+            ),
+
+        transition:
+            construireSequence(
+                transitionBits,
+                1
+            ),
+
+        peripherie:
+            construireSequence(
+                peripherieBits,
+                0
+            )
+
     };
+
 }
 
-module.exports = { 
-    construireSequence,
-    construireBibliotheque 
+
+/**
+ * Construit une séquence seule
+ */
+function construireSequenceSimple(bits){
+
+    return construireSequence(bits,-1);
+
+}
+
+
+/**
+ * Aplatit la bibliothèque.
+ * Très utile pour la comparaison IA.
+ */
+function bibliothequePlate(biblio){
+
+    return [
+
+        ...biblio.noyau,
+
+        ...biblio.transition,
+
+        ...biblio.peripherie
+
+    ];
+
+}
+
+
+module.exports={
+
+    construireSequence:construireSequenceSimple,
+
+    construireBibliotheque,
+
+    bibliothequePlate
+
 };
