@@ -26,7 +26,7 @@ const genererJuridiquePDF = require("./helpers/genererJuridiquePDF");
 const genererPartenairesPDF = require("./helpers/genererPartenairesPDF");
 const genererXLSX = require("./helpers/genererSerialisationXLSX");
 const genererXML = require("./helpers/genererSerialisationXML");
-const { genererSignature } = require("./decodeur_signature");
+
 const { construireBibliotheque } = require("./ia_constructeur");
 
 const app = express();
