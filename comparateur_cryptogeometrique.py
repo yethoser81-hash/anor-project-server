@@ -208,3 +208,26 @@ class ComparateurCryptoGeometrique:
             return "SUSPECT"
 
         return "CONTREFACON_PROBABLE"
+
+if __name__ == "__main__":
+
+    import sys
+    import json
+
+    lecture = json.loads(sys.argv[1])
+
+    reference = json.loads(sys.argv[2])
+
+    c = ComparateurCryptoGeometrique()
+
+    resultat = c.comparer(
+        lecture,
+        reference
+    )
+
+    print(
+        json.dumps(
+            resultat,
+            ensure_ascii=False
+        )
+    )

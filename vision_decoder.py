@@ -542,3 +542,19 @@ return {
     "signature":signature
 
 }
+
+if __name__ == "__main__":
+
+    import sys
+    import json
+
+    decoder = VisionDecoder()
+
+    resultat = decoder.analyser(sys.argv[1])
+
+    print(
+        json.dumps(
+            resultat,
+            ensure_ascii=False
+        )
+    )

@@ -16,6 +16,18 @@ const ExcelJS = require("exceljs");
 const PDFDocument = require("pdfkit");
 const { createClient } = require("@supabase/supabase-js");
 
+// Modules système pour le pont IA (Python)
+const { execFile } = require("child_process");
+const util = require("util");
+const os = require("os");
+
+const exec = util.promisify(execFile);
+
+// Dossier temporaire pour les scans
+const TEMP = path.join(os.tmpdir(), "anor_scan");
+if (!fs.existsSync(TEMP))
+    fs.mkdirSync(TEMP, { recursive: true });
+
 // Correction : On utilise une approche de module compatible
 const Compositeur = require("./public/forge/compositeur.js");
 
@@ -136,6 +148,46 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
 });
 
 /* ==========================================================
+   ROUTE API SCAN (LECTURE & VÉRIFICATION)
+========================================================== */
+
+app.post("/api/scan", upload.single("photo"), async (req, res) => {
+    try {
+        if (!req.file) throw new Error("Photo absente");
+        const lot = req.body.lot;
+        if (!lot) throw new Error("Lot absent");
+
+        const { data, error } = await supabase
+            .from("sya_produit_certifie")
+            .select("*")
+            .eq("lot", lot)
+            .single();
+
+        if (error || !data) throw new Error("Produit inconnu");
+
+        const imagePath = path.join(TEMP, `${Date.now()}.png`);
+        fs.writeFileSync(imagePath, req.file.buffer);
+
+        const reconstruction = await exec("python", [path.join(__dirname, "vision_decoder.py"), imagePath]);
+        const lecture = JSON.parse(reconstruction.stdout);
+
+        const comparaison = await exec("python", [path.join(__dirname, "comparateur_cryptogeometrique.py"), JSON.stringify(lecture), data.bibliotheque_formes]);
+        const resultat = JSON.parse(comparaison.stdout);
+
+        res.json({
+            success: true,
+            produit: data.nom_produit,
+            score: resultat.score,
+            authentique: resultat.authentique,
+            details: resultat
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+/* ==========================================================
    ROUTE API FORGE KIT (DÉDIÉE)
 ========================================================== */
 
@@ -144,23 +196,16 @@ app.post("/api/forge/kit", async (req, res) => {
         const { produit, producteur, lot, quantite, pays, signature, svg } = req.body;
         const zip = new JSZip();
 
-        // 01 Sceau maître
         zip.file("01_SCEAU_MAITRE.svg", svg);
-
-        // 02 Informations produit
         zip.file("02_PRODUIT.json", JSON.stringify({ produit, producteur, lot, quantite, pays, signature, date: new Date().toISOString() }, null, 4));
-
-        // 03 Signature
         zip.file("03_SIGNATURE.txt", signature);
 
-        // 04 Sérialisation CSV
         let csv = "Numero\n";
         for (let i = 1; i <= Number(quantite); i++) {
             csv += `${lot}-${String(i).padStart(6, "0")}\n`;
         }
         zip.file("04_SERIALISATION.csv", csv);
 
-        // 05 XML
         let xml = '<?xml version="1.0"?>\n<serialisation>\n';
         for (let i = 1; i <= Number(quantite); i++) {
             xml += `   <numero>${lot}-${String(i).padStart(6, "0")}</numero>\n`;
@@ -168,7 +213,6 @@ app.post("/api/forge/kit", async (req, res) => {
         xml += "</serialisation>";
         zip.file("05_SERIALISATION.xml", xml);
 
-        // 06 XLSX
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet("Serialisation");
         ws.columns = [{ header: "Numero", key: "numero", width: 35 }];
@@ -178,7 +222,6 @@ app.post("/api/forge/kit", async (req, res) => {
         const xlsxBuffer = await wb.xlsx.writeBuffer();
         zip.file("06_SERIALISATION.xlsx", xlsxBuffer);
 
-        // ZIP
         const contenu = await zip.generateAsync({ type: "nodebuffer" });
         res.setHeader("Content-Type", "application/zip");
         res.setHeader("Content-Disposition", `attachment; filename=KIT_ANOR_${lot}.zip`);
@@ -189,17 +232,10 @@ app.post("/api/forge/kit", async (req, res) => {
     }
 });
 
-app.get("/api/registry", async (req,res)=>{
-
-    const {data,error}=await supabase
-        .from("sya_produit_certifie")
-        .select("*");
-
-    if(error)
-        return res.status(500).json(error);
-
+app.get("/api/registry", async (req, res) => {
+    const { data, error } = await supabase.from("sya_produit_certifie").select("*");
+    if (error) return res.status(500).json(error);
     res.json(data);
-
 });
 
 app.listen(PORT, () => console.log(`ANOR V10 Forge opérationnelle sur port ${PORT}`));
