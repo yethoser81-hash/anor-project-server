@@ -217,13 +217,13 @@ class VisionDecoder:
 
         self.centre = (
 
-            meilleur[0],
+            float(meilleur[0]),
 
-            meilleur[1]
+            float(meilleur[1])
 
         )
 
-        self.rayon = meilleur[2]
+        self.rayon = float(meilleur[2])
 
 
 # ==========================================================
@@ -320,13 +320,13 @@ class VisionDecoder:
 
             forme=forme,
 
-            plein=plein,
+            plein=bool(plein),
 
-            x=cx,
+            x=float(cx),
 
-            y=cy,
+            y=float(cy),
 
-            aire=cv2.contourArea(contour),
+            aire=float(cv2.contourArea(contour)),
 
             contour=contour
 
@@ -500,13 +500,13 @@ class VisionDecoder:
 
         if moyenne < 145:
 
-            return True
+            return bool(True)
 
         if moyenne > 190:
 
-            return False
+            return bool(False)
 
-        return ecart < 32
+        return bool(ecart < 32)
 
 # ==========================================================
 # NORMALISATION
@@ -534,13 +534,13 @@ class VisionDecoder:
 
                     forme=p.forme,
 
-                    plein=p.plein,
+                    plein=bool(p.plein),
 
-                    x=CENTRE_X + xn * 250,
+                    x=float(CENTRE_X + xn * 250),
 
-                    y=CENTRE_Y + yn * 250,
+                    y=float(CENTRE_Y + yn * 250),
 
-                    aire=p.aire,
+                    aire=float(p.aire),
 
                     contour=p.contour
 
@@ -583,7 +583,7 @@ class VisionDecoder:
 
             angle += ANGLE_COMPLET
 
-        return angle, rayon
+        return float(angle), float(rayon)
 
 
 # ==========================================================
@@ -608,7 +608,7 @@ class VisionDecoder:
 
         )
 
-        return candidats[0][0]
+        return int(candidats[0][0])
 
 
 # ==========================================================
@@ -653,7 +653,7 @@ class VisionDecoder:
 
             position = 0
 
-        return position
+        return int(position)
 
 
 # ==========================================================
@@ -694,43 +694,43 @@ class VisionDecoder:
 
                     "forme": p.forme,
 
-                    "plein": p.plein,
+                    "plein": bool(p.plein),
 
-                    "anneau": anneau,
+                    "anneau": int(anneau),
 
-                    "position": position,
+                    "position": int(position),
 
-                    "angle": round(
+                    "angle": float(round(
 
                         math.degrees(angle),
 
                         3
 
-                    ),
+                    )),
 
-                    "rayon": round(
+                    "rayon": float(round(
 
                         rayon,
 
                         3
 
-                    ),
+                    )),
 
-                    "x": round(
+                    "x": float(round(
 
                         p.x,
 
                         2
 
-                    ),
+                    )),
 
-                    "y": round(
+                    "y": float(round(
 
                         p.y,
 
                         2
 
-                    )
+                    ))
 
                 }
 
@@ -791,13 +791,13 @@ class VisionDecoder:
 
                     "forme": None,
 
-                    "plein":False,
+                    "plein": bool(False),
 
-                    "anneau":anneau,
+                    "anneau": int(anneau),
 
-                    "position":position,
+                    "position": int(position),
 
-                    "angle":round(
+                    "angle": float(round(
 
                         position *
 
@@ -805,9 +805,9 @@ class VisionDecoder:
 
                         3
 
-                    ),
+                    )),
 
-                    "rayon":{
+                    "rayon": float({
 
                         0:RAYON_NOYAU,
 
@@ -815,11 +815,11 @@ class VisionDecoder:
 
                         2:RAYON_EXTERIEUR
 
-                    }[anneau],
+                    }[anneau]),
 
-                    "x":None,
+                    "x": None,
 
-                    "y":None
+                    "y": None
 
                 })
 
@@ -929,15 +929,15 @@ class VisionDecoder:
 
                         "forme":g["forme"],
 
-                        "plein":g["plein"],
+                        "plein":bool(g["plein"]),
 
-                        "anneau":g["anneau"],
+                        "anneau":int(g["anneau"]),
 
-                        "position":g["position"],
+                        "position":int(g["position"]),
 
-                        "angle":g["angle"],
+                        "angle":float(g["angle"]),
 
-                        "rayon":g["rayon"]
+                        "rayon":float(g["rayon"])
 
                     }
 
@@ -977,45 +977,45 @@ class VisionDecoder:
 
             "centre":{
 
-                "x":round(
+                "x":float(round(
 
                     self.centre[0],
 
                     2
 
-                ),
+                )),
 
-                "y":round(
+                "y":float(round(
 
                     self.centre[1],
 
                     2
 
-                )
+                ))
 
             },
 
-            "rayon":round(
+            "rayon":float(round(
 
                 self.rayon,
 
                 2
 
-            ),
+            )),
 
-            "nombre_primitives":len(
+            "nombre_primitives":int(len(
 
                 self.primitives
 
-            ),
+            )),
 
-            "qualite": round(
+            "qualite": float(round(
 
                 len(self.primitives)/84*100,
 
                 2
 
-            ),
+            )),
 
             "glyphes":signature,
 
