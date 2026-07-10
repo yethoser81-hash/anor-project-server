@@ -7,6 +7,8 @@ Moteur final anti-contrefaçon
 """
 
 import math
+import sys
+import json
 
 
 TOLERANCE_ANGLE = 6          # degrés
@@ -56,6 +58,10 @@ class ComparateurCryptoGeometrique:
             detecte = glyphes_detectes[i]
             attendu = glyphes_reference[i]
 
+            # Correction 2 : ignorer les glyphes reconstruits (None)
+            if detecte["forme"] is None:
+                continue
+
             if detecte["anneau"] != attendu["anneau"]:
 
                 self.ecarts.append({
@@ -71,7 +77,7 @@ class ComparateurCryptoGeometrique:
                 })
 
                 continue
-          
+            
             if detecte["position"] != attendu["position"]:
 
                 self.ecarts.append({
@@ -88,13 +94,14 @@ class ComparateurCryptoGeometrique:
 
                 continue
 
-            if detecte["forme"] != attendu["forme"]:
+            # Correction 1 : Utilisation de "nom" au lieu de "forme"
+            if detecte["forme"] != attendu["nom"]:
 
                 self.ecarts.append(
                     {
                         "index":i,
                         "type":"forme",
-                        "attendu":attendu["forme"],
+                        "attendu":attendu["nom"],
                         "detecte":detecte["forme"]
                     }
                 )
@@ -147,11 +154,11 @@ class ComparateurCryptoGeometrique:
 
 
             if diff_rayon > TOLERANCE_RAYON:
-
+                # Correction 3 : Type d'erreur "rayon"
                 self.ecarts.append(
                     {
                         "index":i,
-                        "type":"position",
+                        "type":"rayon",
                         "difference":diff_rayon
                     }
                 )

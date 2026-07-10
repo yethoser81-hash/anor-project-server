@@ -1,6 +1,6 @@
 /**
  * ==========================================================
- * server.js (ANOR V10 - SYNCHRONISÉ ET COMPLET)
+ * server.js (ANOR V10 - MOTEUR D'IDENTIFICATION GÉOMÉTRIQUE)
  * ==========================================================
  */
 
@@ -148,39 +148,57 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
 });
 
 /* ==========================================================
-   ROUTE API SCAN (LECTURE & VÉRIFICATION)
+   ROUTE API VÉRIFICATION (IA INDUSTRIELLE - MOTEUR DE RECONNAISSANCE)
 ========================================================== */
 
-app.post("/api/scan", upload.single("photo"), async (req, res) => {
+app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
     try {
-        if (!req.file) throw new Error("Photo absente");
-        const lot = req.body.lot;
-        if (!lot) throw new Error("Lot absent");
+        if (!req.file) return res.status(400).json({ success: false, message: "Aucune image reçue" });
 
-        const { data, error } = await supabase
-            .from("sya_produit_certifie")
-            .select("*")
-            .eq("lot", lot)
-            .single();
-
-        if (error || !data) throw new Error("Produit inconnu");
-
-        const imagePath = path.join(TEMP, `${Date.now()}.png`);
+        // Sauvegarde temporaire
+        const imagePath = path.join(TEMP, `${Date.now()}.jpg`);
         fs.writeFileSync(imagePath, req.file.buffer);
 
-        const reconstruction = await exec("python", [path.join(__dirname, "vision_decoder.py"), imagePath]);
-        const lecture = JSON.parse(reconstruction.stdout);
+        // 1. Reconstruction Vision
+        const vision = await exec("python", [path.join(__dirname, "vision_decoder.py"), imagePath]);
+        const lecture = JSON.parse(vision.stdout);
 
-        const comparaison = await exec("python", [path.join(__dirname, "comparateur_cryptogeometrique.py"), JSON.stringify(lecture), data.bibliotheque_formes]);
-        const resultat = JSON.parse(comparaison.stdout);
+        // 2. Récupération de toutes les bibliothèques candidates depuis Supabase
+        const { data: produits, error } = await supabase.from("sya_produit_certifie").select("*");
+        if (error) throw error;
+        if (!produits || produits.length === 0) throw new Error("Aucun produit enregistré en base");
 
+        // 3. Identification par correspondance (Boucle de recherche)
+        let meilleurProduit = null;
+        let meilleurScore = -1;
+        let meilleurResultat = null;
+
+        for (const produit of produits) {
+            const comparaison = await exec("python", [
+                path.join(__dirname, "comparateur_cryptogeometrique.py"),
+                JSON.stringify(lecture),
+                produit.bibliotheque_formes
+            ]);
+            
+            const resultat = JSON.parse(comparaison.stdout);
+
+            if (resultat.score > meilleurScore) {
+                meilleurScore = resultat.score;
+                meilleurProduit = produit;
+                meilleurResultat = resultat;
+            }
+        }
+
+        // 4. Réponse APK
         res.json({
             success: true,
-            produit: data.nom_produit,
-            score: resultat.score,
-            authentique: resultat.authentique,
-            details: resultat
+            authentique: meilleurResultat.authentique,
+            score: meilleurResultat.score,
+            produit: meilleurProduit,
+            comparaison: meilleurResultat,
+            lecture: lecture
         });
+
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: err.message });

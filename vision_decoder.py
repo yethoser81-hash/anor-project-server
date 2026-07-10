@@ -1,51 +1,49 @@
 """
 ==========================================================
 vision_decoder.py
-ANOR V10
-Moteur principal de reconstruction géométrique du sceau
+ANOR V11
+Reconstruiseur géométrique officiel
 ==========================================================
 """
 
 import cv2
 import math
+import json
 import numpy as np
+
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
+
 
 # ==========================================================
-# CONSTANTES DE LA FORGE
+# CONSTANTES
 # ==========================================================
 
 TAILLE_REFERENCE = 500
-CENTRE_REFERENCE_X = 250
-CENTRE_REFERENCE_Y = 250
-SURFACE_MIN = 30
 
-RAYONS_FORGE = (210, 170, 130)
-DENSITES_FORGE = (34, 28, 22)
-TOLERANCE_RAYON = 12
-TOLERANCE_ANGLE = 360 / 34 / 2
+CENTRE_X = 250
+CENTRE_Y = 250
 
-RAYONS_PAR_ANNEAU = {
-    0:130,
-    1:170,
-    2:210
-}
+RAYON_EXTERIEUR = 210
+RAYON_TRANSITION = 170
+RAYON_NOYAU = 130
 
-NB_GLYPHES_PAR_ANNEAU = {
-    0:22,
-    1:28,
-    2:34
-}
+NB_EXTERIEUR = 34
+NB_TRANSITION = 28
+NB_NOYAU = 22
+
+SURFACE_MIN = 25
 
 ANGLE_COMPLET = math.pi * 2
+
 
 # ==========================================================
 # STRUCTURES
 # ==========================================================
 
 @dataclass
-class PrimitiveDetectee:
+class Primitive:
+
     forme: str
     plein: bool
     x: float
@@ -53,508 +51,1003 @@ class PrimitiveDetectee:
     aire: float
     contour: object
 
-@dataclass
-class GlypheReconstruit:
-    forme: str
-    plein: bool
-    angle: float
-    rayon: float
-    anneau: int
-    x: float
-    y: float
-
-@dataclass
-class SealGeometry:
-    centre_x: float
-    centre_y: float
-    rayon_global: float
-    glyphes: List[GlypheReconstruit]
 
 # ==========================================================
-# CLASSE PRINCIPALE
+# MOTEUR
 # ==========================================================
 
 class VisionDecoder:
+
     def __init__(self):
+
         self.image = None
+
         self.gray = None
+
         self.binary = None
+
         self.centre = None
+
         self.rayon = None
-        self.glyphes = []
+
         self.primitives = []
+
+        self.glyphes = []
+
+
+# ==========================================================
+# CHARGEMENT
+# ==========================================================
 
     def charger(self, image):
+
         if isinstance(image, str):
+
             self.image = cv2.imread(image)
+
         else:
+
             self.image = image.copy()
+
         if self.image is None:
-            raise RuntimeError("Impossible de charger l'image.")
+
+            raise RuntimeError("Image introuvable")
+
+
+# ==========================================================
+# PRETRAITEMENT
+# ==========================================================
 
     def pretraitement(self):
-        gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (5, 5), 0)
-        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
-        gray = clahe.apply(gray)
-        binary = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 31, 4)
-        kernel = np.ones((3, 3), np.uint8)
-        binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-        self.gray = gray
-        self.binary = binary
-        return binary
+
+        self.gray = cv2.cvtColor(
+
+            self.image,
+
+            cv2.COLOR_BGR2GRAY
+
+        )
+
+        self.gray = cv2.GaussianBlur(
+
+            self.gray,
+
+            (5,5),
+
+            0
+
+        )
+
+        self.gray = cv2.equalizeHist(
+
+            self.gray
+
+        )
+
+        self.binary = cv2.adaptiveThreshold(
+
+            self.gray,
+
+            255,
+
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+
+            cv2.THRESH_BINARY_INV,
+
+            41,
+
+            5
+
+        )
+
+        kernel = np.ones(
+
+            (3,3),
+
+            np.uint8
+
+        )
+
+        self.binary = cv2.morphologyEx(
+
+            self.binary,
+
+            cv2.MORPH_OPEN,
+
+            kernel
+
+        )
+
+        self.binary = cv2.morphologyEx(
+
+            self.binary,
+
+            cv2.MORPH_CLOSE,
+
+            kernel
+
+        )
+
+
+# ==========================================================
+# DETECTION DISQUE
+# ==========================================================
 
     def detecter_disque(self):
-        contours, _ = cv2.findContours(self.binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        contours,_ = cv2.findContours(
+
+            self.binary,
+
+            cv2.RETR_EXTERNAL,
+
+            cv2.CHAIN_APPROX_SIMPLE
+
+        )
+
         meilleur = None
-        meilleure_surface = 0
+
+        surface = 0
+
         for c in contours:
-            area = cv2.contourArea(c)
-            if area < meilleure_surface:
+
+            aire = cv2.contourArea(c)
+
+            if aire < surface:
+
                 continue
-            (x, y), rayon = cv2.minEnclosingCircle(c)
-            if rayon < 80:
+
+            (x,y),r = cv2.minEnclosingCircle(c)
+
+            if r < 80:
+
                 continue
-            meilleure_surface = area
-            meilleur = (x, y, rayon)
+
+            surface = aire
+
+            meilleur = (x,y,r)
+
         if meilleur is None:
-            raise RuntimeError("Disque principal introuvable.")
-        self.centre = (meilleur[0], meilleur[1])
+
+            raise RuntimeError(
+
+                "Disque non détecté"
+
+            )
+
+        self.centre = (
+
+            meilleur[0],
+
+            meilleur[1]
+
+        )
+
         self.rayon = meilleur[2]
-        return self.centre, self.rayon
+
+
+# ==========================================================
+# EXTRACTION PRIMITIVES
+# ==========================================================
 
     def detecter_primitives(self):
+
         self.primitives = []
-        contours, _ = cv2.findContours(self.binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        contours,_ = cv2.findContours(
+
+            self.binary,
+
+            cv2.RETR_EXTERNAL,
+
+            cv2.CHAIN_APPROX_SIMPLE
+
+        )
+
         for contour in contours:
-            aire = cv2.contourArea(contour)
+
+            aire = cv2.contourArea(
+
+                contour
+
+            )
+
             if aire < SURFACE_MIN:
+
                 continue
-            primitive = self.analyser_contour(contour)
-            if primitive is not None:
-                self.primitives.append(primitive)
+
+            primitive = self.extraire_primitive(
+
+                contour
+
+            )
+
+            if primitive:
+
+                self.primitives.append(
+
+                    primitive
+
+                )
+
         return self.primitives
 
-    def analyser_contour(self, contour):
-        perimetre = cv2.arcLength(contour, True)
-        if perimetre == 0:
+# ==========================================================
+# EXTRACTION D'UNE PRIMITIVE
+# ==========================================================
+
+    def extraire_primitive(self, contour):
+
+        peri = cv2.arcLength(contour, True)
+
+        if peri == 0:
             return None
-        approximation = cv2.approxPolyDP(contour, 0.035 * perimetre, True)
-        moments = cv2.moments(contour)
-        if moments["m00"] == 0:
-            return None
-        cx = moments["m10"] / moments["m00"]
-        cy = moments["m01"] / moments["m00"]
-        forme = self.reconnaitre_forme(contour, approximation)
-        plein = self.est_plein(contour)
-        return PrimitiveDetectee(
-            forme=forme,
-            plein=plein,
-            x=cx,
-            y=cy,
-            aire=cv2.contourArea(contour),
-            contour=contour
+
+        approx = cv2.approxPolyDP(
+
+            contour,
+
+            0.035 * peri,
+
+            True
+
         )
 
-    # ==========================================================
-    # RECONNAISSANCE DES FORMES
-    # ==========================================================
+        M = cv2.moments(contour)
 
-    def reconnaitre_forme(self, contour, approximation):
-        sommets = len(approximation)
-        aire = cv2.contourArea(contour)
-        perimetre = cv2.arcLength(contour, True)
-        if perimetre == 0:
-            return "inconnu"
-        circularite = (4 * math.pi * aire / (perimetre * perimetre))
-        if circularite > 0.82:
-            return "cercle"
-        if sommets == 3:
-            return "triangle"
-        if sommets == 4:
-            x, y, w, h = cv2.boundingRect(approximation)
-            ratio = w / float(h)
-            if 0.85 <= ratio <= 1.15:
-                rect = cv2.minAreaRect(contour)
-                angle = abs(rect[2])
-                if angle > 15:
-                    return "losange"
-                return "carre"
-            return "rectangle"
-        if sommets >= 8:
-            return "croix"
-        if sommets == 5 or sommets == 6:
-            x, y, w, h = cv2.boundingRect(approximation)
-            if h > w * 2:
-                return "barre_verticale"
-        return "inconnu"
+        if M["m00"] == 0:
+            return None
 
-    # ==========================================================
-    # DETECTION PLEIN / VIDE
-    # ==========================================================
+        cx = M["m10"] / M["m00"]
 
-    def est_plein(self, contour):
-        masque = np.zeros(self.gray.shape, dtype=np.uint8)
-        cv2.drawContours(masque, [contour], -1, 255, -1)
-        pixels = self.gray[masque == 255]
-        if len(pixels) == 0:
-            return False
-        moyenne = np.mean(pixels)
-        return moyenne < 150
+        cy = M["m01"] / M["m00"]
 
-    # ==========================================================
-    # NORMALISATION FORGE
-    # ==========================================================
+        forme = self.reconnaitre_forme(
 
-    def normaliser_primitives(self):
-        if not self.centre:
-            raise RuntimeError("Centre du sceau absent")
-        resultat = []
-        cx0, cy0 = self.centre
-        for p in self.primitives:
-            x = (p.x - cx0) / self.rayon
-            y = (p.y - cy0) / self.rayon
-            x = CENTRE_REFERENCE_X + x * 250
-            y = CENTRE_REFERENCE_Y + y * 250
-            resultat.append(
-                PrimitiveDetectee(
-                    forme=p.forme,
-                    plein=p.plein,
-                    x=x,
-                    y=y,
-                    aire=p.aire,
-                    contour=p.contour
-                )
-            )
-        self.primitives = resultat
-        return resultat
+            contour,
 
-    # ==========================================================
-    # TRANSFORMATION PRIMITIVES → GLYPHES
-    # ==========================================================
+            approx
 
-    def coordonnees_polaires(self, x, y):
-        cx, cy = CENTRE_REFERENCE_X, CENTRE_REFERENCE_Y
-        dx, dy = x - cx, y - cy
-        rayon = math.sqrt(dx * dx + dy * dy)
-        angle = math.atan2(dy, dx)
-        if angle < 0:
-            angle += ANGLE_COMPLET
-        return angle, rayon
+        )
 
-    def determiner_anneau(self, rayon):
-        distances = [abs(rayon - r) for r in RAYONS_FORGE]
-        return distances.index(min(distances))
-    
-    def determiner_position(self, angle, anneau):
+        if forme == "inconnu":
 
-    total = NB_GLYPHES_PAR_ANNEAU[anneau]
+            return None
 
-    pas = ANGLE_COMPLET / total
+        plein = self.est_plein(contour)
 
-    position = int(round(angle / pas))
+        return Primitive(
 
-    if position >= total:
-        position = 0
+            forme=forme,
 
-    return position
+            plein=plein,
 
-    def reconstruire_glyphes(self):
-        self.glyphes = []
-        for p in self.primitives:
-            angle, rayon = self.coordonnees_polaires(p.x, p.y)
-            anneau = self.determiner_anneau(rayon)
-            if p.forme == "inconnu":
-                continue
-            position = self.determiner_position(
-    angle,
-    anneau
-)
+            x=cx,
 
-self.glyphes.append(
+            y=cy,
 
-    {
+            aire=cv2.contourArea(contour),
 
-        "forme":p.forme,
+            contour=contour
 
-        "plein":p.plein,
+        )
 
-        "angle":angle,
-
-        "rayon":rayon,
-
-        "anneau":anneau,
-
-        "position":position,
-
-        "x":p.x,
-
-        "y":p.y
-
-    }
-
-)
-        return self.glyphes
-
-    # ==========================================================
-    # CREATION SIGNATURE GEOMETRIQUE
-    # ==========================================================
-
-    def creer_signature_geometrique(self):
-        anneaux = {0: [], 1: [], 2: []}
-        for g in self.glyphes:
-            anneaux[g.anneau].append(g)
-        resultat = []
-        for numero in [2, 1, 0]:
-            elements = sorted(anneaux[numero],key=lambda g:g["position"] )
-            for g in elements:
-                resultat.append({
-                    "forme": g.forme,
-                    "plein": g.plein,
-                    "anneau": numero,
-                    "angle": round(math.degrees(g.angle), 2),
-                    "rayon": round(g.rayon, 2)
-                })
-        return resultat
 
 # ==========================================================
-# COMPARAISON DES FORMES
+# RECONNAISSANCE DES FORMES
 # ==========================================================
 
-def comparer_bibliotheque(self, bibliotheque_attendue):
+    def reconnaitre_forme(
 
-    observes = self.creer_signature_geometrique()
+        self,
 
-    attendus = []
+        contour,
 
-    for zone in ["noyau", "transition", "peripherie"]:
+        approx
 
-        if zone in bibliotheque_attendue:
-
-            attendus.extend(
-                bibliotheque_attendue[zone]
-            )
-
-    erreurs = 0
-
-    total = min(
-        len(observes),
-        len(attendus)
-    )
-
-    if total == 0:
-
-        return {
-            "score":0,
-            "erreurs":["bibliothèque vide"]
-        }
-
-    details=[]
-
-    for i in range(total):
-
-        o = observes[i]
-        a = attendus[i]
-
-        ok = True
-
-        if o["forme"] != a["nom"]:
-            ok = False
-
-        if o["plein"] != a["est_plein"]:
-            ok = False
-
-        if not ok:
-
-            erreurs += 1
-
-            details.append({
-
-                "index":i,
-
-                "attendu":a,
-
-                "observe":o
-
-            })
-
-    score = 100 * (
-        total-erreurs
-    ) / total
-
-    return {
-
-        "score":round(score,2),
-
-        "erreurs":details
-
-    }
-
-    # ==========================================================
-# COMPARAISON DE SIGNATURE
-# ==========================================================
-
-def comparer_signature(self,
-                       signature_reference):
-
-    signature = self.creer_signature_geometrique()
-
-    if len(signature) != len(signature_reference):
-
-        return {
-
-            "score":0,
-
-            "valide":False
-
-        }
-
-    bonnes = 0
-
-    for a,b in zip(
-        signature,
-        signature_reference
     ):
 
-        if (
+        nb = len(approx)
 
-            a["forme"] == b["forme"]
+        aire = cv2.contourArea(contour)
 
-            and
+        peri = cv2.arcLength(contour, True)
 
-            a["plein"] == b["plein"]
+        if peri == 0:
 
-            and
+            return "inconnu"
 
-            a["anneau"] == b["anneau"]
+        circularite = (
 
-        ):
+            4 *
 
-            bonnes += 1
+            math.pi *
 
-    score = bonnes / len(signature) * 100
+            aire
 
-    return {
+        ) / (
 
-        "score":round(score,2),
+            peri *
 
-        "valide":score > 95
+            peri
 
-    }
+        )
 
-    # ==========================================================
-# SCORE GLOBAL
+        if circularite > 0.84:
+
+            return "cercle"
+
+        if nb == 3:
+
+            return "triangle"
+
+        if nb == 4:
+
+            rect = cv2.minAreaRect(
+
+                contour
+
+            )
+
+            w = rect[1][0]
+
+            h = rect[1][1]
+
+            if h == 0 or w == 0:
+
+                return "rectangle"
+
+            ratio = max(
+
+                w,
+
+                h
+
+            ) / min(
+
+                w,
+
+                h
+
+            )
+
+            angle = abs(rect[2])
+
+            if ratio < 1.20:
+
+                if angle > 20:
+
+                    return "losange"
+
+                return "carre"
+
+            return "rectangle"
+
+        if nb >= 9:
+
+            return "croix"
+
+        if nb in (5,6):
+
+            x,y,w,h = cv2.boundingRect(
+
+                contour
+
+            )
+
+            if h > w * 2:
+
+                return "barre_verticale"
+
+        return "inconnu"
+
+
+# ==========================================================
+# PLEIN / VIDE
 # ==========================================================
 
-def calculer_score(self,
-                   score_bibliotheque,
-                   score_signature):
+    def est_plein(
 
-    total = (
+        self,
 
-        score_bibliotheque * 0.70
+        contour
 
-        +
+    ):
 
-        score_signature * 0.30
+        masque = np.zeros(
 
-    )
+            self.gray.shape,
 
-    return round(total,2)
+            np.uint8
 
-    # ==========================================================
-# VERDICT
+        )
+
+        cv2.drawContours(
+
+            masque,
+
+            [contour],
+
+            -1,
+
+            255,
+
+            -1
+
+        )
+
+        pixels = self.gray[
+
+            masque == 255
+
+        ]
+
+        if len(pixels) == 0:
+
+            return False
+
+        moyenne = np.mean(
+
+            pixels
+
+        )
+
+        ecart = np.std(
+
+            pixels
+
+        )
+
+        if moyenne < 145:
+
+            return True
+
+        if moyenne > 190:
+
+            return False
+
+        return ecart < 32
+
+# ==========================================================
+# NORMALISATION
 # ==========================================================
 
-def verifier(self,
-             image,
-             bibliotheque,
-             signature):
+    def normaliser_primitives(self):
 
-    self.analyser(image)
+        if self.centre is None:
 
-    resultat_biblio = self.comparer_bibliotheque(
-        bibliotheque
-    )
+            raise RuntimeError("Centre absent")
 
-    resultat_signature = self.comparer_signature(
-        signature
-    )
+        cx, cy = self.centre
 
-    score = self.calculer_score(
+        resultat = []
 
-        resultat_biblio["score"],
+        for p in self.primitives:
 
-        resultat_signature["score"]
+            xn = (p.x - cx) / self.rayon
 
-    )
+            yn = (p.y - cy) / self.rayon
 
-    return {
+            resultat.append(
 
-        "authentique":
+                Primitive(
 
-            score >= 95,
+                    forme=p.forme,
 
-        "score":
+                    plein=p.plein,
 
-            score,
+                    x=CENTRE_X + xn * 250,
 
-        "bibliotheque":
+                    y=CENTRE_Y + yn * 250,
 
-            resultat_biblio,
+                    aire=p.aire,
 
-        "signature":
+                    contour=p.contour
 
-            resultat_signature
+                )
 
-    }
+            )
 
-    # ==========================================================
-    # PIPELINE COMPLETE
-    # ==========================================================
+        self.primitives = resultat
 
-    def analyser(self, image):
+        return resultat
+
+
+# ==========================================================
+# COORDONNEES POLAIRES
+# ==========================================================
+
+    def coordonnees_polaires(self, x, y):
+
+        dx = x - CENTRE_X
+
+        dy = y - CENTRE_Y
+
+        rayon = math.sqrt(
+
+            dx * dx +
+
+            dy * dy
+
+        )
+
+        angle = math.atan2(
+
+            dy,
+
+            dx
+
+        )
+
+        if angle < 0:
+
+            angle += ANGLE_COMPLET
+
+        return angle, rayon
+
+
+# ==========================================================
+# DETERMINATION DE L'ANNEAU
+# ==========================================================
+
+    def determiner_anneau(self, rayon):
+
+        candidats = [
+
+            (0, abs(rayon - RAYON_NOYAU)),
+
+            (1, abs(rayon - RAYON_TRANSITION)),
+
+            (2, abs(rayon - RAYON_EXTERIEUR))
+
+        ]
+
+        candidats.sort(
+
+            key=lambda x: x[1]
+
+        )
+
+        return candidats[0][0]
+
+
+# ==========================================================
+# POSITION OFFICIELLE DANS L'ANNEAU
+# ==========================================================
+
+    def determiner_position(
+
+        self,
+
+        angle,
+
+        anneau
+
+    ):
+
+        if anneau == 2:
+
+            total = NB_EXTERIEUR
+
+        elif anneau == 1:
+
+            total = NB_TRANSITION
+
+        else:
+
+            total = NB_NOYAU
+
+        pas = ANGLE_COMPLET / total
+
+        position = int(
+
+            round(
+
+                angle / pas
+
+            )
+
+        )
+
+        if position >= total:
+
+            position = 0
+
+        return position
+
+
+# ==========================================================
+# RECONSTRUCTION DES 84 GLYPHES
+# ==========================================================
+
+    def reconstruire_glyphes(self):
+
+        self.glyphes = []
+
+        for p in self.primitives:
+
+            angle, rayon = self.coordonnees_polaires(
+
+                p.x,
+
+                p.y
+
+            )
+
+            anneau = self.determiner_anneau(
+
+                rayon
+
+            )
+
+            position = self.determiner_position(
+
+                angle,
+
+                anneau
+
+            )
+
+            self.glyphes.append(
+
+                {
+
+                    "forme": p.forme,
+
+                    "plein": p.plein,
+
+                    "anneau": anneau,
+
+                    "position": position,
+
+                    "angle": round(
+
+                        math.degrees(angle),
+
+                        3
+
+                    ),
+
+                    "rayon": round(
+
+                        rayon,
+
+                        3
+
+                    ),
+
+                    "x": round(
+
+                        p.x,
+
+                        2
+
+                    ),
+
+                    "y": round(
+
+                        p.y,
+
+                        2
+
+                    )
+
+                }
+
+            )
+
+        self.glyphes.sort(
+
+            key=lambda g: (
+
+                g["anneau"],
+
+                g["position"]
+
+            )
+
+        )
+
+        return self.glyphes
+
+
+# ==========================================================
+# RECONSTRUCTION DES POSITIONS MANQUANTES
+# ==========================================================
+
+    def completer_glyphes(self):
+
+        attendus = {
+
+            0: NB_NOYAU,
+
+            1: NB_TRANSITION,
+
+            2: NB_EXTERIEUR
+
+        }
+
+        for anneau in [0,1,2]:
+
+            existants = {
+
+                g["position"]: g
+
+                for g in self.glyphes
+
+                if g["anneau"] == anneau
+
+            }
+
+            total = attendus[anneau]
+
+            for position in range(total):
+
+                if position in existants:
+
+                    continue
+
+                self.glyphes.append({
+
+                    "forme": None,
+
+                    "plein":False,
+
+                    "anneau":anneau,
+
+                    "position":position,
+
+                    "angle":round(
+
+                        position *
+
+                        (360/total),
+
+                        3
+
+                    ),
+
+                    "rayon":{
+
+                        0:RAYON_NOYAU,
+
+                        1:RAYON_TRANSITION,
+
+                        2:RAYON_EXTERIEUR
+
+                    }[anneau],
+
+                    "x":None,
+
+                    "y":None
+
+                })
+
+        self.glyphes.sort(
+
+            key=lambda g:(
+
+                g["anneau"],
+
+                g["position"]
+
+            )
+
+        )
+
+        return self.glyphes
+
+
+# ==========================================================
+# NETTOYAGE DES DOUBLONS
+# ==========================================================
+
+    def supprimer_doublons(self):
+
+        uniques = {}
+
+        for g in self.glyphes:
+
+            cle = (
+
+                g["anneau"],
+
+                g["position"]
+
+            )
+
+            if cle not in uniques:
+
+                uniques[cle] = g
+
+                continue
+
+            precedent = uniques[cle]
+
+            if precedent["forme"] is None:
+
+                uniques[cle] = g
+
+                continue
+
+        self.glyphes = list(
+
+            uniques.values()
+
+        )
+
+        self.glyphes.sort(
+
+            key=lambda g:(
+
+                g["anneau"],
+
+                g["position"]
+
+            )
+
+        )
+
+        return self.glyphes
+
+
+# ==========================================================
+# SIGNATURE GEOMETRIQUE OFFICIELLE
+# ==========================================================
+
+    def creer_signature_geometrique(self):
+
+        signature = []
+
+        anneaux = {
+
+            0: [],
+
+            1: [],
+
+            2: []
+
+        }
+
+        for g in self.glyphes:
+
+            anneaux[g["anneau"]].append(g)
+
+        for numero in [2,1,0]:
+
+            anneaux[numero].sort(
+
+                key=lambda x: x["position"]
+
+            )
+
+            for g in anneaux[numero]:
+
+                signature.append(
+
+                    {
+
+                        "forme":g["forme"],
+
+                        "plein":g["plein"],
+
+                        "anneau":g["anneau"],
+
+                        "position":g["position"],
+
+                        "angle":g["angle"],
+
+                        "rayon":g["rayon"]
+
+                    }
+
+                )
+
+        return signature
+
+
+# ==========================================================
+# PIPELINE COMPLET
+# ==========================================================
+
+    def analyser(self,image):
+
         self.charger(image)
+
         self.pretraitement()
+
+        if cv2.countNonZero(self.binary) < 500:
+            raise RuntimeError("Image inexploitable")
+
         self.detecter_disque()
+
         self.detecter_primitives()
+
         self.normaliser_primitives()
+
         self.reconstruire_glyphes()
+
+        self.supprimer_doublons()
+
+        self.completer_glyphes()
+
         signature = self.creer_signature_geometrique()
 
-return {
+        return {
 
-    "centre":{
+            "centre":{
 
-        "x":self.centre[0],
+                "x":round(
 
-        "y":self.centre[1]
+                    self.centre[0],
 
-    },
+                    2
 
-    "rayon":self.rayon,
+                ),
 
-    "nombre_primitives":len(self.primitives),
+                "y":round(
 
-    "glyphes":signature,
+                    self.centre[1],
 
-    "signature":signature
+                    2
 
-}
+                )
 
-if __name__ == "__main__":
+            },
+
+            "rayon":round(
+
+                self.rayon,
+
+                2
+
+            ),
+
+            "nombre_primitives":len(
+
+                self.primitives
+
+            ),
+
+            "qualite": round(
+
+                len(self.primitives)/84*100,
+
+                2
+
+            ),
+
+            "glyphes":signature,
+
+            "signature":signature
+
+        }
+
+
+# ==========================================================
+# EXECUTION LIGNE DE COMMANDE
+# ==========================================================
+
+if __name__=="__main__":
 
     import sys
-    import json
 
-    decoder = VisionDecoder()
+    decoder=VisionDecoder()
 
-    resultat = decoder.analyser(sys.argv[1])
+    resultat=decoder.analyser(
+
+        sys.argv[1]
+
+    )
 
     print(
+
         json.dumps(
+
             resultat,
+
             ensure_ascii=False
+
         )
+
     )
