@@ -163,6 +163,13 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
         const vision = await exec("python", [path.join(__dirname, "vision_decoder.py"), imagePath]);
         const lecture = JSON.parse(vision.stdout);
 
+        if (!lecture.success || !lecture.sceau_detecte) {
+            return res.json({
+                success: false,
+                message: lecture.message || "Sceau ANOR non détecté"
+            });
+        }
+
         // 2. Récupération de toutes les bibliothèques candidates depuis Supabase
         const { data: produits, error } = await supabase.from("sya_produit_certifie").select("*");
         if (error) throw error;
@@ -187,6 +194,13 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
                 meilleurProduit = produit;
                 meilleurResultat = resultat;
             }
+        }
+
+        if (meilleurScore < 95) {
+            return res.json({
+                success: false,
+                message: "Aucun sceau authentique détecté"
+            });
         }
 
         // 4. Réponse APK

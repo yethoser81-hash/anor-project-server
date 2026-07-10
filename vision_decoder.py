@@ -956,12 +956,42 @@ class VisionDecoder:
 
         self.pretraitement()
 
+        # très peu d'information dans l'image
         if cv2.countNonZero(self.binary) < 500:
-            raise RuntimeError("Image inexploitable")
 
-        self.detecter_disque()
+            return {
+                "success": False,
+                "sceau_detecte": False,
+                "message": "Image inexploitable"
+            }
+
+        # aucun disque trouvé
+        try:
+
+            self.detecter_disque()
+
+        except:
+
+            return {
+                "success": False,
+                "sceau_detecte": False,
+                "message": "Sceau non détecté"
+            }
 
         self.detecter_primitives()
+
+        # trop peu de glyphes détectés
+        if len(self.primitives) < 20:
+
+            return {
+
+                "success": False,
+
+                "sceau_detecte": False,
+
+                "message": "Nombre insuffisant de glyphes"
+
+            }
 
         self.normaliser_primitives()
 
@@ -974,6 +1004,10 @@ class VisionDecoder:
         signature = self.creer_signature_geometrique()
 
         return {
+
+            "success": True,
+
+            "sceau_detecte": True,
 
             "centre":{
 
