@@ -89,11 +89,22 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
         const quantite = parseInt(body.quantite || 1);
         
         const signature = [nom_produit, nom_producteur, lot, pays_origine, quantite].join("_");
+        
+        const signatureTexte = signature;
+        const signatureBinaire = crypto
+            .createHash("sha256")
+            .update(signatureTexte)
+            .digest("hex")
+            .split("")
+            .map(h => parseInt(h, 16).toString(2).padStart(4, "0"))
+            .join("")
+            .substring(0, 90);
+
         const identifiant = genererNumeroForge();
         const serialisation = genererSerialisation(quantite);
         
         const instructions = Compositeur.composer(signature);
-        const bibliotheque = construireBibliotheque(signature);
+        const bibliotheque = construireBibliotheque(signatureBinaire);
 
         const empreinteGeometrique = crypto
             .createHash("sha256")
