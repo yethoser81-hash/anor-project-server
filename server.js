@@ -141,7 +141,27 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
             visuel_url: visuelURL, 
             certificat_url: certURL 
         };
-        await supabase.from("sya_produit_certifie").insert(insertion);
+
+        const {
+            data,
+            error
+        } = await supabase.from("sya_produit_certifie").insert(insertion).select();
+
+        if(error){
+            console.error(
+                "ERREUR SUPABASE :",
+                error
+            );
+            throw new Error(
+                "Insertion impossible : "
+                + error.message
+            );
+        }
+
+        console.log(
+            "Insertion OK :",
+            data
+        );
 
         const zip = new JSZip();
         zip.file("00_Sceau_Maitre.png", fs.readFileSync(sceauPath));

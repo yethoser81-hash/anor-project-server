@@ -98,7 +98,7 @@ const ForgeController = {
     },
 
     /* ==========================================================
-       GÉNÉRATION SÉRIALISATION
+        GÉNÉRATION SÉRIALISATION
     ========================================================== */
     genererNumeros() {
         const lot = document.getElementById("lot").value.trim();
@@ -115,7 +115,7 @@ const ForgeController = {
     },
 
     /* ==========================================================
-       GÉNÉRATION SCEAU
+        GÉNÉRATION SCEAU
     ========================================================== */
     async forge() {
         const produit = document.getElementById("nom_produit").value.trim();
@@ -138,15 +138,111 @@ const ForgeController = {
             return;
         }
 
-        // Rendu SVG via ForgeRenderer
-        await window.ForgeRenderer.render("seal-container", signature);
-
-        document.getElementById("status").innerText = "SCEAU GÉNÉRÉ";
+        // ==========================================================
+        // Génération visuelle locale
+        // ==========================================================
+        await window.ForgeRenderer.render(
+            "seal-container",
+            signature
+        );
+        document.getElementById("status").innerText = "ENVOI AU SERVEUR...";
         document.getElementById("debug").innerText = signature;
+        
+        // ==========================================================
+        // Construction du FormData
+        // ==========================================================
+        const formData = new FormData();
+        formData.append("nom_produit", produit);
+        formData.append("nom_producteur", producteur);
+        formData.append(
+            "composition",
+            document.getElementById("composition").value.trim()
+        );
+        formData.append("lot", lot);
+        formData.append(
+            "quantite",
+            quantite
+        );
+        formData.append(
+            "type_emballage",
+            document.getElementById("type_emballage").value.trim()
+        );
+        formData.append(
+            "pays_origine",
+            pays
+        );
+        // Cameroun
+        formData.append(
+            "date_certificat_conformite",
+            document.getElementById("date_certificat_conformite").value
+        );
+        // International
+        formData.append(
+            "date_fabrication",
+            document.getElementById("date_fabrication").value
+        );
+        formData.append(
+            "date_peremption",
+            document.getElementById("date_peremption").value
+        );
+        
+        // Fichiers
+        const visuel = document.getElementById("visuel").files[0];
+        if(visuel){
+            formData.append(
+                "visuel",
+                visuel
+            );
+        }
+        
+        const certificat = document.getElementById("certificat_pdf").files[0];
+        if(certificat){
+            formData.append(
+                "certificat_pdf",
+                certificat
+            );
+        }
+
+        // ==========================================================
+        // Envoi serveur
+        // ==========================================================
+        try{
+            const reponse =
+            await fetch(
+                window.API + "/forge",
+                {
+                    method:"POST",
+                    body:formData
+                }
+            );
+
+            const resultat =
+            await reponse.json();
+
+            if(!resultat.success){
+                throw new Error(
+                    resultat.message
+                );
+            }
+
+            document.getElementById("status").innerText =
+            "FORGE TERMINÉE";
+
+            alert(
+                "Produit enregistré.\n\nKit :\n" +
+                resultat.kit
+            );
+
+        }catch(err){
+            console.error(err);
+            document.getElementById("status").innerText =
+            "ERREUR";
+            alert(err.message);
+        }
     },
 
     /* ==========================================================
-       IMAGE PRODUIT
+        IMAGE PRODUIT
     ========================================================== */
     previewImage(event){
         const fichier=event.target.files[0];
@@ -165,7 +261,7 @@ const ForgeController = {
     },
 
     /* ==========================================================
-       RESET
+        RESET
     ========================================================== */
     reset() {
         document.getElementById("forgeForm").reset();
@@ -186,7 +282,7 @@ const ForgeController = {
     },
 
     /* ==========================================================
-       EXPORT PNG HD
+        EXPORT PNG HD
     ========================================================== */
     async exportPNG() {
         const svg = document.querySelector("#seal-container svg");
@@ -248,109 +344,109 @@ const ForgeController = {
     },
 
     /* ==========================================================
-   CONVERSION SVG VERS PNG HD POUR KIT
-========================================================== */
+    CONVERSION SVG VERS PNG HD POUR KIT
+    ========================================================== */
 
-async convertirSVG_PNG(svg){
+    async convertirSVG_PNG(svg){
 
-    return new Promise(resolve=>{
+        return new Promise(resolve=>{
 
-        const serializer = new XMLSerializer();
+            const serializer = new XMLSerializer();
 
-        const svgString =
-        serializer.serializeToString(svg);
-
-
-        const blob = new Blob(
-            [svgString],
-            {
-                type:"image/svg+xml;charset=utf-8"
-            }
-        );
+            const svgString =
+            serializer.serializeToString(svg);
 
 
-        const url =
-        URL.createObjectURL(blob);
-
-
-        const image = new Image();
-
-
-        image.onload = ()=>{
-
-
-            const SIZE = 4096;
-
-
-            const canvas =
-            document.createElement("canvas");
-
-
-            canvas.width = SIZE;
-            canvas.height = SIZE;
-
-
-            const ctx =
-            canvas.getContext("2d");
-
-
-            // transparent
-            ctx.clearRect(
-                0,
-                0,
-                SIZE,
-                SIZE
+            const blob = new Blob(
+                [svgString],
+                {
+                    type:"image/svg+xml;charset=utf-8"
+                }
             );
 
 
-            ctx.drawImage(
-                image,
-                0,
-                0,
-                SIZE,
-                SIZE
-            );
+            const url =
+            URL.createObjectURL(blob);
 
 
-            canvas.toBlob(
-                blobPNG=>{
-
-                    URL.revokeObjectURL(url);
-
-                    resolve(blobPNG);
-
-                },
-                "image/png",
-                1
-            );
+            const image = new Image();
 
 
-        };
+            image.onload = ()=>{
 
 
-        image.src=url;
+                const SIZE = 4096;
 
 
-    });
+                const canvas =
+                document.createElement("canvas");
 
-},
+
+                canvas.width = SIZE;
+                canvas.height = SIZE;
+
+
+                const ctx =
+                canvas.getContext("2d");
+
+
+                // transparent
+                ctx.clearRect(
+                    0,
+                    0,
+                    SIZE,
+                    SIZE
+                );
+
+
+                ctx.drawImage(
+                    image,
+                    0,
+                    0,
+                    SIZE,
+                    SIZE
+                );
+
+
+                canvas.toBlob(
+                    blobPNG=>{
+
+                        URL.revokeObjectURL(url);
+
+                        resolve(blobPNG);
+
+                    },
+                    "image/png",
+                    1
+                );
+
+
+            };
+
+
+            image.src=url;
+
+
+        });
+
+    },
 
     /* ==========================================================
-       EXPORT KIT COMPLET
+        EXPORT KIT COMPLET
     ========================================================== */
     async exportKit() {
 
-    const zip = new JSZip();
+        const zip = new JSZip();
 
-    const svg = document.querySelector("#seal-container svg");
+        const svg = document.querySelector("#seal-container svg");
 
-    if (!svg) {
+        if (!svg) {
 
-        alert("Veuillez d'abord générer un sceau.");
+            alert("Veuillez d'abord générer un sceau.");
 
-        return;
+            return;
 
-    }
+        }
 
         //==================================================
         // Informations produit
@@ -375,23 +471,23 @@ async convertirSVG_PNG(svg){
         //==================================================
 
         zip.file(
-"01_SCEAU_MAITRE.svg",
-svg.outerHTML
-);
+            "01_SCEAU_MAITRE.svg",
+            svg.outerHTML
+        );
 
 
-//==================================================
-// 02 - Sceau maître PNG HD
-//==================================================
+        //==================================================
+        // 02 - Sceau maître PNG HD
+        //==================================================
 
-const pngHD =
-await this.convertirSVG_PNG(svg);
+        const pngHD =
+        await this.convertirSVG_PNG(svg);
 
 
-zip.file(
-"02_SCEAU_MAITRE_HD.png",
-pngHD
-);
+        zip.file(
+            "02_SCEAU_MAITRE_HD.png",
+            pngHD
+        );
 
         //==================================================
         // 02 - Signature
@@ -416,9 +512,9 @@ pngHD
         //==================================================
 
         zip.file(
-        "04_GUIDE_UTILISATION.txt",
+            "04_GUIDE_UTILISATION.txt",
 
-        `GUIDE OFFICIEL DU SCEAU NUMERIQUE ANOR
+            `GUIDE OFFICIEL DU SCEAU NUMERIQUE ANOR
 
 Taille minimale :
 22 mm
@@ -448,9 +544,9 @@ Le sceau doit être imprimé exactement tel que fourni.
         //==================================================
 
         zip.file(
-        "05_AVERTISSEMENT_JURIDIQUE.txt",
+            "05_AVERTISSEMENT_JURIDIQUE.txt",
 
-        `AVERTISSEMENT
+            `AVERTISSEMENT
 
 Toute reproduction,
 copie,
@@ -478,9 +574,9 @@ Sanctions possibles :
         //==================================================
 
         zip.file(
-        "06_IMPRIMEURS_PARTENAIRES.txt",
+            "06_IMPRIMEURS_PARTENAIRES.txt",
 
-        `IMPRIMERIES PARTENAIRES ANOR
+            `IMPRIMERIES PARTENAIRES ANOR
 
 Cette liste est administrée par l'ANOR.
 
@@ -499,19 +595,19 @@ Email
 
         let csv = "Numero;Identifiant;Lot\n";
 
-for(let i=1;i<=quantite;i++){
+        for(let i=1;i<=quantite;i++){
 
-    const numero = String(i).padStart(6,"0");
+            const numero = String(i).padStart(6,"0");
 
-    const identifiant = `${lot}-${numero}`;
+            const identifiant = `${lot}-${numero}`;
 
-    csv += `${numero};${identifiant};${lot}\n`;
+            csv += `${numero};${identifiant};${lot}\n`;
 
-}
+        }
 
         zip.file(
-        "07_SERIALISATION.csv",
-        csv
+            "07_SERIALISATION.csv",
+            csv
         );
 
         //==================================================
@@ -519,144 +615,144 @@ for(let i=1;i<=quantite;i++){
         //==================================================
 
         let xml =
-`<?xml version="1.0" encoding="UTF-8"?>
+        `<?xml version="1.0" encoding="UTF-8"?>
 <serialisation>
 `;
 
-for(let i=1;i<=quantite;i++){
+        for(let i=1;i<=quantite;i++){
 
-    const numero = String(i).padStart(6,"0");
+            const numero = String(i).padStart(6,"0");
 
-    const identifiant = `${lot}-${numero}`;
+            const identifiant = `${lot}-${numero}`;
 
-    xml +=
-`    <produit>
+            xml +=
+        `    <produit>
         <numero>${numero}</numero>
         <identifiant>${identifiant}</identifiant>
         <lot>${lot}</lot>
     </produit>
 `;
 
-}
+        }
 
-xml += `</serialisation>`;
+        xml += `</serialisation>`;
 
         zip.file(
-        "08_SERIALISATION.xml",
-        xml
+            "08_SERIALISATION.xml",
+            xml
         );
 
         //==================================================
-// 09 - Sérialisation JSON
-//==================================================
+        // 09 - Sérialisation JSON
+        //==================================================
 
-const serialisation = [];
+        const serialisation = [];
 
-for(let i=1;i<=quantite;i++){
+        for(let i=1;i<=quantite;i++){
 
-    const numero = String(i).padStart(6,"0");
+            const numero = String(i).padStart(6,"0");
 
-    serialisation.push({
+            serialisation.push({
 
-        numero,
+                numero,
 
-        identifiant: `${lot}-${numero}`,
+                identifiant: `${lot}-${numero}`,
 
-        lot
+                lot
 
-    });
+            });
 
-}
+        }
 
-zip.file(
-    "09_SERIALISATION.json",
-    JSON.stringify(serialisation,null,4)
-);
+        zip.file(
+            "09_SERIALISATION.json",
+            JSON.stringify(serialisation,null,4)
+        );
 
         //==================================================
         // 09 - Manifest
         //==================================================
 
-       const hashSVG =
-await calculerHash(svg.outerHTML);
+        const hashSVG =
+        await calculerHash(svg.outerHTML);
 
 
-const manifest = {
+        const manifest = {
 
 
-version:"ANOR-1.0",
+            version:"ANOR-1.0",
 
 
-lot,
+            lot,
 
 
-produit,
+            produit,
 
 
-producteur,
+            producteur,
 
 
-quantite,
+            quantite,
 
 
-date_generation:
-new Date().toISOString(),
+            date_generation:
+            new Date().toISOString(),
 
 
-format_sceau:
-"SVG + PNG HD 4096px",
+            format_sceau:
+            "SVG + PNG HD 4096px",
 
 
-empreinte_SHA256:{
+            empreinte_SHA256:{
 
 
-"SCEAU_MAITRE.svg":
-hashSVG
+                "SCEAU_MAITRE.svg":
+                hashSVG
 
 
-},
+            },
 
 
-fichiers:[
+            fichiers:[
 
-"01_SCEAU_MAITRE.svg",
+                "01_SCEAU_MAITRE.svg",
 
-"02_SCEAU_MAITRE_HD.png",
+                "02_SCEAU_MAITRE_HD.png",
 
-"03_SIGNATURE.txt",
+                "03_SIGNATURE.txt",
 
-"04_PRODUIT.json",
+                "04_PRODUIT.json",
 
-"05_GUIDE_UTILISATION.txt",
+                "05_GUIDE_UTILISATION.txt",
 
-"06_AVERTISSEMENT_JURIDIQUE.txt",
+                "06_AVERTISSEMENT_JURIDIQUE.txt",
 
-"07_IMPRIMEURS_PARTENAIRES.txt",
+                "07_IMPRIMEURS_PARTENAIRES.txt",
 
-"08_SERIALISATION.csv",
+                "08_SERIALISATION.csv",
 
-"09_SERIALISATION.xml",
+                "09_SERIALISATION.xml",
 
-"10_SERIALISATION.json",
+                "10_SERIALISATION.json",
 
-"11_MANIFEST_ANOR.json"
+                "11_MANIFEST_ANOR.json"
 
-]
+            ]
 
-};
+        };
 
 
-zip.file(
+        zip.file(
 
-"11_MANIFEST_ANOR.json",
+            "11_MANIFEST_ANOR.json",
 
-JSON.stringify(
-manifest,
-null,
-4
-)
+            JSON.stringify(
+                manifest,
+                null,
+                4
+            )
 
-);
+        );
 
         //==================================================
         // Génération ZIP
@@ -664,7 +760,7 @@ null,
 
         const contenu = await zip.generateAsync({
 
-        type:"blob"
+            type:"blob"
 
         });
 
