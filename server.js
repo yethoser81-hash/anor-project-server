@@ -30,6 +30,7 @@ if (!fs.existsSync(TEMP))
 
 // Correction : On utilise une approche de module compatible
 const Compositeur = require("./public/forge/compositeur.js");
+const { comparerSignature } = require("./helpers/comparateur");
 
 // Helpers de génération
 const genererSceau = require("./helpers/genererSceau");
@@ -94,6 +95,11 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
         const instructions = Compositeur.composer(signature);
         const bibliotheque = construireBibliotheque(signature);
 
+        const empreinteGeometrique = crypto
+            .createHash("sha256")
+            .update(JSON.stringify(bibliotheque))
+            .digest("hex");
+
         const tempFolder = path.join(__dirname, "generated", identifiant);
         fs.mkdirSync(tempFolder, { recursive: true });
 
@@ -121,7 +127,20 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
             certURL = supabase.storage.from("certificats").getPublicUrl(pathS).data.publicUrl;
         }
 
-        const insertion = { identifiant, nom_produit, nom_producteur, lot, pays_origine, quantite, signature, bibliotheque_formes: JSON.stringify(bibliotheque), serialisation: JSON.stringify(serialisation), visuel_url: visuelURL, certificat_url: certURL };
+        const insertion = { 
+            identifiant, 
+            nom_produit, 
+            nom_producteur, 
+            lot, 
+            pays_origine, 
+            quantite, 
+            signature, 
+            bibliotheque_formes: JSON.stringify(bibliotheque), 
+            empreinte_geometrique: empreinteGeometrique,
+            serialisation: JSON.stringify(serialisation), 
+            visuel_url: visuelURL, 
+            certificat_url: certURL 
+        };
         await supabase.from("sya_produit_certifie").insert(insertion);
 
         const zip = new JSZip();
@@ -170,29 +189,38 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
             });
         }
 
-        // 2. Récupération de toutes les bibliothèques candidates depuis Supabase
-        const { data: produits, error } = await supabase.from("sya_produit_certifie").select("*");
-        if (error) throw error;
-        if (!produits || produits.length === 0) throw new Error("Aucun produit enregistré en base");
+        // Calcul de l'empreinte de la signature détectée pour filtrer
+        const empreinteDetectee = crypto
+            .createHash("sha256")
+            .update(JSON.stringify(lecture.signature)) // Ajusté selon la structure de lecture.signature
+            .digest("hex");
 
-        // 3. Identification par correspondance (Boucle de recherche)
-        let meilleurProduit = null;
+        // 2. Recherche optimisée par empreinte dans Supabase
+        const { data: produits, error } = await supabase
+            .from("sya_produit_certifie")
+            .select("*")
+            .eq("empreinte_geometrique", empreinteDetectee);
+
+        if (error) throw error;
+        if (!produits || produits.length === 0) {
+            return res.json({ success: false, message: "Aucun produit correspondant trouvé" });
+        }
+
+        // 3. Identification par correspondance détaillée
         let meilleurScore = -1;
-        let meilleurResultat = null;
+        let meilleurProduit = null;
 
         for (const produit of produits) {
-            const comparaison = await exec("python", [
-                path.join(__dirname, "comparateur_cryptogeometrique.py"),
-                JSON.stringify(lecture),
-                produit.bibliotheque_formes
-            ]);
+            const reference = JSON.parse(produit.bibliotheque_formes);
             
-            const resultat = JSON.parse(comparaison.stdout);
+            const score = comparerSignature(
+                lecture.signature,
+                reference
+            );
 
-            if (resultat.score > meilleurScore) {
-                meilleurScore = resultat.score;
+            if (score > meilleurScore) {
+                meilleurScore = score;
                 meilleurProduit = produit;
-                meilleurResultat = resultat;
             }
         }
 
@@ -206,10 +234,9 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
         // 4. Réponse APK
         res.json({
             success: true,
-            authentique: meilleurResultat.authentique,
-            score: meilleurResultat.score,
+            authentique: meilleurScore >= 92,
+            score: meilleurScore,
             produit: meilleurProduit,
-            comparaison: meilleurResultat,
             lecture: lecture
         });
 
