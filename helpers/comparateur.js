@@ -1,42 +1,93 @@
 /**
  * helpers/comparateur.js
- * Moteur de comparaison unifié ANOR V11
- * Synchronisé avec les tolérances de comparateur_cryptogeometrique.py
+ * ANOR V11.1
+ * Comparaison par index géométrique
  */
 
-const TOLERANCE_ANGLE = 6;  // degrés
-const TOLERANCE_RAYON = 12; // pixels
+const TOLERANCE_ANGLE = 6;
+const TOLERANCE_RAYON = 12;
 
-function comparerSignature(scan, reference) {
-    if (!scan || !reference || scan.length === 0) return 0;
-    
-    let correspondances = 0;
-    const total = reference.length;
+function creerIndex(liste){
 
-    for (let i = 0; i < total; i++) {
-        const a = scan[i];
-        const b = reference[i];
+    const index = {};
 
-        if (!a || !b) continue;
+    for(const g of liste){
 
-        // 1. Validation structurelle stricte (Anneau et Position)
-        if (a.anneau !== b.anneau || a.position !== b.position) continue;
+        const cle =
+            `${g.anneau}_${g.position}`;
 
-        // 2. Validation Forme et État (Plein/Vide)
-        if (a.forme !== b.forme || a.plein !== b.plein) continue;
+        index[cle]=g;
 
-        // 3. Validation Géométrique (Tolérances identiques à Python)
-        let diffAngle = Math.abs(a.angle - b.angle);
-        if (diffAngle > 180) diffAngle = 360 - diffAngle; // Gestion du wrap-around 0/360
-        
-        const diffRayon = Math.abs(a.rayon - b.rayon);
-
-        if (diffAngle <= TOLERANCE_ANGLE && diffRayon <= TOLERANCE_RAYON) {
-            correspondances++;
-        }
     }
 
-    return Number(((correspondances / total) * 100).toFixed(2));
+    return index;
+
 }
 
-module.exports = { comparerSignature };
+function comparerSignature(scan, reference){
+
+    if(
+        !scan ||
+        !reference ||
+        !scan.length ||
+        !reference.length
+    ){
+        return 0;
+    }
+
+    const scanIndex =
+        creerIndex(scan);
+
+    let correspondances = 0;
+
+    for(const ref of reference){
+
+        const cle =
+            `${ref.anneau}_${ref.position}`;
+
+        const lu =
+            scanIndex[cle];
+
+        if(!lu)
+            continue;
+
+        if(lu.forme!==ref.forme)
+            continue;
+
+        if(lu.plein!==ref.plein)
+            continue;
+
+        let diffAngle =
+            Math.abs(
+                lu.angle-ref.angle
+            );
+
+        if(diffAngle>180)
+            diffAngle=360-diffAngle;
+
+        const diffRayon =
+            Math.abs(
+                lu.rayon-ref.rayon
+            );
+
+        if(
+            diffAngle<=TOLERANCE_ANGLE &&
+            diffRayon<=TOLERANCE_RAYON
+        ){
+            correspondances++;
+        }
+
+    }
+
+    return Number(
+        (
+            correspondances/
+            reference.length
+        ).toFixed(4)
+    )*100;
+
+}
+
+module.exports={
+    comparerSignature
+};

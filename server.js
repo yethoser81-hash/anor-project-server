@@ -166,6 +166,15 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
 
         });
 
+        referenceGeometrique.sort(
+            (a,b)=>{
+                if(a.anneau!==b.anneau){
+                    return a.anneau-b.anneau;
+                }
+                return a.position-b.position;
+            }
+        );
+
         const empreinteGeometrique =
         crypto
         .createHash("sha256")
@@ -238,6 +247,8 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
         for (const p of produits) {
             const reference = typeof p.bibliotheque_formes === 'string' ? JSON.parse(p.bibliotheque_formes) : p.bibliotheque_formes;
             
+            const score = comparerSignature(lecture.signature, reference.glyphes || reference);
+            
             console.log("=================================");
             console.log("Produit :", p.nom_produit);
             console.log("Score :", score);
@@ -245,7 +256,6 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
             console.log("Reference :", reference.length);
             console.log("=================================");
 
-            const score = comparerSignature(lecture.signature, reference.glyphes || reference);
             if (score > meilleurScore) {
                 meilleurScore = score;
                 meilleurProduit = p;

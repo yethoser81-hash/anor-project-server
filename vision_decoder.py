@@ -120,9 +120,18 @@ class VisionDecoder:
         if circularite > 0.84: return "cercle"
         if nb == 3: return "triangle"
         if nb == 4:
+            rect = cv2.minAreaRect(contour)
+            angle = abs(rect[2])
+            if 20 < angle < 70:
+                return "losange"
+                
             x, y, w, h = cv2.boundingRect(contour)
             ratio = max(w, h) / min(w, h)
-            return "carre" if ratio < 1.2 else "rectangle"
+            if ratio > 3.2:
+                return "barre_verticale"
+            if ratio < 1.2:
+                return "carre"
+            return "rectangle"
         if nb >= 9: return "croix"
         return "inconnu"
 
@@ -143,22 +152,17 @@ class VisionDecoder:
 
     def reconstruire_glyphes(self):
         self.glyphes = []
-        # Rayons et densités identiques au compositeur.js
         rayons_ref = [210, 165, 120]
         densites = [34, 28, 22]
 
         for p in self.primitives:
             dx, dy = p.x - CENTRE_X, p.y - CENTRE_Y
             rayon_detecte = math.sqrt(dx*dx + dy*dy)
-            # Conversion en degrés pour correspondre au compositeur.js
             angle_deg = (math.degrees(math.atan2(dy, dx)) + 360) % 360
             
-            # Identifier l'anneau (0=Extérieur, 1=Transition, 2=Noyau)
-            # On cherche le rayon le plus proche dans notre liste de référence
             distances = [abs(rayon_detecte - r) for r in rayons_ref]
             anneau = distances.index(min(distances))
             
-            # Calculer la position (index) basée sur le pas angulaire du compositeur
             nb = densites[anneau]
             pas_angulaire = 360 / nb
             position = int(round(angle_deg / pas_angulaire)) % nb
@@ -181,6 +185,14 @@ class VisionDecoder:
             self.normaliser_primitives()
             self.reconstruire_glyphes()
             
+            self.glyphes = sorted(
+                self.glyphes,
+                key=lambda g: (
+                    g["anneau"],
+                    g["position"]
+                )
+            )
+
             return {
                 "success": True,
                 "sceau_detecte": True,
