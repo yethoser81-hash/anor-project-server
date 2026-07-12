@@ -1,6 +1,7 @@
 /**
  * ==========================================================
- * server.js (ANOR V10 - MOTEUR D'IDENTIFICATION GÉOMÉTRIQUE)
+ * server.js (ANOR V11 - MOTEUR D'IDENTIFICATION GÉOMÉTRIQUE)
+ * Synchronisé avec index.html et forge.js (Nouvelle Table)
  * ==========================================================
  */
 
@@ -16,23 +17,20 @@ const ExcelJS = require("exceljs");
 const PDFDocument = require("pdfkit");
 const { createClient } = require("@supabase/supabase-js");
 
-// Modules système pour le pont IA (Python)
 const { execFile } = require("child_process");
 const util = require("util");
 const os = require("os");
 
 const exec = util.promisify(execFile);
 
-// Dossier temporaire pour les scans
 const TEMP = path.join(os.tmpdir(), "anor_scan");
-if (!fs.existsSync(TEMP))
+if (!fs.existsSync(TEMP)) {
     fs.mkdirSync(TEMP, { recursive: true });
+}
 
-// Correction : On utilise une approche de module compatible
 const Compositeur = require("./public/forge/compositeur.js");
 const { comparerSignature } = require("./helpers/comparateur");
 
-// Helpers de génération
 const genererSceau = require("./helpers/genererSceau");
 const genererGuidePDF = require("./helpers/genererGuidePDF");
 const genererJuridiquePDF = require("./helpers/genererJuridiquePDF");
@@ -40,7 +38,7 @@ const genererPartenairesPDF = require("./helpers/genererPartenairesPDF");
 const genererXLSX = require("./helpers/genererSerialisationXLSX");
 const genererXML = require("./helpers/genererSerialisationXML");
 
-const { construireBibliotheque } = require("./ia_constructeur");
+const { getBibliotheque } = require("./ia_constructeur");
 
 const app = express();
 const PORT = process.env.PORT || 10000;
@@ -50,10 +48,9 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Configuration statique explicite
 app.use(express.static(path.join(__dirname, "public"), {
-    setHeaders: (res, path) => {
-        if (path.endsWith(".js")) {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith(".js")) {
             res.setHeader("Content-Type", "application/javascript");
         }
     }
@@ -61,60 +58,227 @@ app.use(express.static(path.join(__dirname, "public"), {
 
 const upload = multer({ storage: multer.memoryStorage() });
 
-/* ==========================================================
-   FONCTIONS OUTILS
-========================================================== */
-
 function genererNumeroForge() {
     const d = new Date();
-    return "ANOR-" + d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0") + "-" + crypto.randomBytes(4).toString("hex").toUpperCase();
+    return "ANOR-" + d.getFullYear() + 
+           String(d.getMonth() + 1).padStart(2, "0") + 
+           String(d.getDate()).padStart(2, "0") + "-" + 
+           crypto.randomBytes(4).toString("hex").toUpperCase();
 }
 
-function genererSerialisation(quantite) {
+function genererSerialisation(quantite, lot) {
     const liste = [];
     for (let i = 1; i <= quantite; i++) {
-        liste.push("ANOR-" + String(i).padStart(8, "0"));
+        liste.push(`${lot}-${String(i).padStart(8, "0")}`);
     }
     return liste;
 }
 
 /* ==========================================================
-   ROUTE API FORGE
+   ROUTE API FORGE (SYNCHRONISÉE AVEC NOUVELLE TABLE)
 ========================================================== */
 
 app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "certificat_pdf", maxCount: 1 }]), async (req, res) => {
     try {
-        const body = req.body;
-        const { nom_produit, nom_producteur, lot, pays_origine, composition, type_emballage } = body;
-        const quantite = parseInt(body.quantite || 1);
+        const { 
+            nom_produit, 
+            nom_producteur, 
+            lot, 
+            pays_origine, 
+            composition, 
+            type_emballage,
+            date_certificat_conformite,
+            date_fabrication,
+            date_peremption,
+            quantite
+        } = req.body;
         
-        const signature = [nom_produit, nom_producteur, lot, pays_origine, quantite].join("_");
+        const qte = parseInt(quantite || 1, 10);
         
-        const signatureTexte = signature;
-        const signatureBinaire = crypto
-            .createHash("sha256")
-            .update(signatureTexte)
-            .digest("hex")
-            .split("")
-            .map(h => parseInt(h, 16).toString(2).padStart(4, "0"))
-            .join("")
-            .substring(0, 90);
+        if (!nom_produit || !nom_producteur || !lot || !pays_origine) {
+            return res.status(400).json({ success: false, message: "Paramètres obligatoires manquants." });
+        }
 
-        const identifiant = genererNumeroForge();
-        const serialisation = genererSerialisation(quantite);
+        const signature = [
+            nom_produit,
+            nom_producteur,
+            lot,
+            pays_origine,
+            qte
+        ].join("_");
+
+        const nonce = genererNumeroForge();
+
+        /*
+         * Génération EXACTE du sceau
+         * qui servira aussi de référence
+         */
+        const instructions = Compositeur.composer(
+            signature,
+            {
+                zoneSerie: true
+            }
+        );
+
+        /*
+         * Bibliothèque brute
+         */
+        const bibliothequeDonnees = getBibliotheque();
+
+        /*
+         * Construction de la référence géométrique
+         */
+        const referenceGeometrique = instructions.map((g, index) => {
+
+            const rayons = [210,165,120];
+            const densites = [34,28,22];
+
+            let anneau = rayons.indexOf(g.rayon);
+
+            if(anneau < 0)
+                anneau = 0;
+
+            const position =
+                index % densites[anneau];
+
+            return {
+
+                forme: g.glyphe.forme,
+
+                plein: g.glyphe.plein,
+
+                anneau,
+
+                position,
+
+                angle:
+                    Number(
+                        (
+                            g.angle
+                            *180
+                            /Math.PI
+                        ).toFixed(2)
+                    ),
+
+                rayon: g.rayon
+
+            };
+
+        });
+
+        const empreinteGeometrique =
+        crypto
+        .createHash("sha256")
+        .update(
+        JSON.stringify(referenceGeometrique)
+        )
+        .digest("hex");
+
+        let visuelURL = null;
+        if (req.files?.visuel) {
+            const f = req.files.visuel[0];
+            const ext = path.extname(f.originalname);
+            const nomPropre = f.originalname.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 20);
+            const pathS = `produits/${nonce}_${nomPropre}${ext}`;
+            const uploadImage = await supabase.storage.from("produits").upload(pathS, f.buffer, { contentType: f.mimetype, upsert: false });
+            if (uploadImage.error) throw new Error("UPLOAD IMAGE : " + uploadImage.error.message);
+            visuelURL = supabase.storage.from("produits").getPublicUrl(pathS).data.publicUrl;
+        }
+
+        let certURL = null;
+        if (req.files?.certificat_pdf) {
+            const f = req.files.certificat_pdf[0];
+            const pathS = `certificats/${nonce}.pdf`;
+            const uploadCert = await supabase.storage.from("certificats").upload(pathS, f.buffer, { contentType: f.mimetype, upsert: false });
+            if (uploadCert.error) throw new Error("UPLOAD CERTIFICAT : " + uploadCert.error.message);
+            certURL = supabase.storage.from("certificats").getPublicUrl(pathS).data.publicUrl;
+        }
+
+        const insertion = { 
+            nom_produit, nom_producteur, lot, pays_origine, quantite: qte, 
+            composition, type_emballage, date_certificat_conformite, date_fabrication, date_peremption,
+            signature_maitre: signature, bibliotheque_formes: referenceGeometrique, serialisation: genererSerialisation(qte, lot), 
+            empreinte_geometrique: empreinteGeometrique, visuel_url: visuelURL, certificat_url: certURL, nonce: nonce 
+        };
+
+        const { error: insertError } = await supabase.from("sya_produit_certifie").insert(insertion);
+        if (insertError) throw new Error("SUPABASE : " + insertError.message);
+
+        res.json({ success: true, identifiant: nonce });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+/* ==========================================================
+   ROUTE API PRODUIT VERIFIER
+========================================================== */
+
+app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: "Aucune image reçue" });
+
+        const imagePath = path.join(TEMP, `${Date.now()}.jpg`);
+        fs.writeFileSync(imagePath, req.file.buffer);
+
+        const vision = await exec("python", [path.join(__dirname, "vision_decoder.py"), imagePath]);
+        const lecture = JSON.parse(vision.stdout);
+
+        if (!lecture.success || !lecture.sceau_detecte) {
+            return res.json({ success: false, message: lecture.message || "Sceau ANOR non détecté" });
+        }
+
+        const { data: produits, error } = await supabase.from("sya_produit_certifie").select("*");
+        if (error) throw error;
         
-        const instructions = Compositeur.composer(signature);
-        const bibliotheque = construireBibliotheque(signatureBinaire);
+        let meilleurScore = -1;
+        let meilleurProduit = null;
 
-        const empreinteGeometrique = crypto
-            .createHash("sha256")
-            .update(JSON.stringify(bibliotheque))
-            .digest("hex");
+        for (const p of produits) {
+            const reference = typeof p.bibliotheque_formes === 'string' ? JSON.parse(p.bibliotheque_formes) : p.bibliotheque_formes;
+            
+            console.log("=================================");
+            console.log("Produit :", p.nom_produit);
+            console.log("Score :", score);
+            console.log("Scan :", lecture.signature.length);
+            console.log("Reference :", reference.length);
+            console.log("=================================");
 
-        const tempFolder = path.join(__dirname, "generated", identifiant);
+            const score = comparerSignature(lecture.signature, reference.glyphes || reference);
+            if (score > meilleurScore) {
+                meilleurScore = score;
+                meilleurProduit = p;
+            }
+        }
+
+        if (meilleurScore < 95) {
+            return res.json({ success: false, message: "Authenticité non validée", score: meilleurScore });
+        }
+
+        res.json({ success: true, authentique: true, score: meilleurScore, produit: meilleurProduit, lecture: lecture });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+/* ==========================================================
+   ROUTE API EXPORT KIT (UTILISE LES HELPERS)
+========================================================== */
+
+app.post("/api/export/kit", async (req, res) => {
+    try {
+        const { signature, lot, quantite } = req.body;
+        const qte = parseInt(quantite, 10);
+        const nonce = "KIT_" + Date.now();
+        const tempFolder = path.join(__dirname, "generated", nonce);
         fs.mkdirSync(tempFolder, { recursive: true });
 
-        const sceauPath = await genererSceau(signature, identifiant, instructions);
+        const serialisation = genererSerialisation(qte, lot);
+        const instructions = Compositeur.composer(signature, { zoneSerie: true });
+        const sceau = await genererSceau(signature, nonce, instructions);
+
         fs.writeFileSync(path.join(tempFolder, "05_Serialisation.csv"), "NumeroSerie\n" + serialisation.join("\n"), "utf8");
         await genererXLSX(serialisation, path.join(tempFolder, "05_Serialisation.xlsx"));
         await genererXML(serialisation, path.join(tempFolder, "05_Serialisation.xml"));
@@ -122,197 +286,18 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
         await genererJuridiquePDF(path.join(tempFolder, "04_Avertissement_Juridique.pdf"));
         await genererPartenairesPDF(path.join(tempFolder, "06_Partenaires_Impression.pdf"));
 
-        let visuelURL = null;
-        if (req.files?.visuel) {
-            const f = req.files.visuel[0];
-            const pathS = `produits/${identifiant}_${f.originalname}`;
-            await supabase.storage.from("produits").upload(pathS, f.buffer, { contentType: f.mimetype });
-            visuelURL = supabase.storage.from("produits").getPublicUrl(pathS).data.publicUrl;
-        }
-
-        let certURL = null;
-        if (req.files?.certificat_pdf) {
-            const f = req.files.certificat_pdf[0];
-            const pathS = `certificats/${identifiant}.pdf`;
-            await supabase.storage.from("certificats").upload(pathS, f.buffer, { contentType: f.mimetype });
-            certURL = supabase.storage.from("certificats").getPublicUrl(pathS).data.publicUrl;
-        }
-
-        const insertion = { 
-            identifiant, 
-            nom_produit, 
-            nom_producteur, 
-            lot, 
-            pays_origine, 
-            quantite, 
-            signature, 
-            bibliotheque_formes: JSON.stringify(bibliotheque), 
-            empreinte_geometrique: empreinteGeometrique,
-            serialisation: JSON.stringify(serialisation), 
-            visuel_url: visuelURL, 
-            certificat_url: certURL 
-        };
-
-        const {
-            data,
-            error
-        } = await supabase.from("sya_produit_certifie").insert(insertion).select();
-
-        if(error){
-            console.error(
-                "ERREUR SUPABASE :",
-                error
-            );
-            throw new Error(
-                "Insertion impossible : "
-                + error.message
-            );
-        }
-
-        console.log(
-            "Insertion OK :",
-            data
-        );
-
         const zip = new JSZip();
-        zip.file("00_Sceau_Maitre.png", fs.readFileSync(sceauPath));
-        if (req.files?.visuel) zip.file("01_Visuel_Produit" + path.extname(req.files.visuel[0].originalname), req.files.visuel[0].buffer);
-        if (req.files?.certificat_pdf) zip.file("02_Certificat_Conformite.pdf", req.files.certificat_pdf[0].buffer);
-        zip.file("03_Guide_Impression.pdf", fs.readFileSync(path.join(tempFolder, "03_Guide_Impression.pdf")));
-        zip.file("04_Avertissement_Juridique.pdf", fs.readFileSync(path.join(tempFolder, "04_Avertissement_Juridique.pdf")));
-        zip.file("05_Serialisation.csv", fs.readFileSync(path.join(tempFolder, "05_Serialisation.csv")));
-        zip.file("05_Serialisation.xlsx", fs.readFileSync(path.join(tempFolder, "05_Serialisation.xlsx")));
-        zip.file("05_Serialisation.xml", fs.readFileSync(path.join(tempFolder, "05_Serialisation.xml")));
-        zip.file("06_Partenaires_Impression.pdf", fs.readFileSync(path.join(tempFolder, "06_Partenaires_Impression.pdf")));
-        zip.file("08_Manifeste.json", JSON.stringify(insertion, null, 4));
-
-        const contenuZIP = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE", compressionOptions: { level: 9 } });
-        await supabase.storage.from("kits").upload(`kits/${identifiant}.zip`, contenuZIP, { contentType: "application/zip" });
-        const kitURL = supabase.storage.from("kits").getPublicUrl(`kits/${identifiant}.zip`).data.publicUrl;
-
-        res.json({ success: true, identifiant, kit: kitURL });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-/* ==========================================================
-   ROUTE API VÉRIFICATION (IA INDUSTRIELLE - MOTEUR DE RECONNAISSANCE)
-========================================================== */
-
-app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
-    try {
-        if (!req.file) return res.status(400).json({ success: false, message: "Aucune image reçue" });
-
-        // Sauvegarde temporaire
-        const imagePath = path.join(TEMP, `${Date.now()}.jpg`);
-        fs.writeFileSync(imagePath, req.file.buffer);
-
-        // 1. Reconstruction Vision
-        const vision = await exec("python", [path.join(__dirname, "vision_decoder.py"), imagePath]);
-        const lecture = JSON.parse(vision.stdout);
-
-        if (!lecture.success || !lecture.sceau_detecte) {
-            return res.json({
-                success: false,
-                message: lecture.message || "Sceau ANOR non détecté"
-            });
-        }
-
-        // Calcul de l'empreinte de la signature détectée pour filtrer
-        const empreinteDetectee = crypto
-            .createHash("sha256")
-            .update(JSON.stringify(lecture.signature)) // Ajusté selon la structure de lecture.signature
-            .digest("hex");
-
-        // 2. Recherche optimisée par empreinte dans Supabase
-        const { data: produits, error } = await supabase
-            .from("sya_produit_certifie")
-            .select("*")
-            .eq("empreinte_geometrique", empreinteDetectee);
-
-        if (error) throw error;
-        if (!produits || produits.length === 0) {
-            return res.json({ success: false, message: "Aucun produit correspondant trouvé" });
-        }
-
-        // 3. Identification par correspondance détaillée
-        let meilleurScore = -1;
-        let meilleurProduit = null;
-
-        for (const produit of produits) {
-            const reference = JSON.parse(produit.bibliotheque_formes);
-            
-            const score = comparerSignature(
-                lecture.signature,
-                reference
-            );
-
-            if (score > meilleurScore) {
-                meilleurScore = score;
-                meilleurProduit = produit;
-            }
-        }
-
-        if (meilleurScore < 95) {
-            return res.json({
-                success: false,
-                message: "Aucun sceau authentique détecté"
-            });
-        }
-
-        // 4. Réponse APK
-        res.json({
-            success: true,
-            authentique: meilleurScore >= 92,
-            score: meilleurScore,
-            produit: meilleurProduit,
-            lecture: lecture
+        zip.file("00_Sceau_Maitre.svg", sceau.svg);
+        zip.file("00_Sceau_Maitre.png", sceau.png);
+        
+        const files = fs.readdirSync(tempFolder);
+        files.forEach(file => {
+            zip.file(file, fs.readFileSync(path.join(tempFolder, file)));
         });
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, message: err.message });
-    }
-});
-
-/* ==========================================================
-   ROUTE API FORGE KIT (DÉDIÉE)
-========================================================== */
-
-app.post("/api/forge/kit", async (req, res) => {
-    try {
-        const { produit, producteur, lot, quantite, pays, signature, svg } = req.body;
-        const zip = new JSZip();
-
-        zip.file("01_SCEAU_MAITRE.svg", svg);
-        zip.file("02_PRODUIT.json", JSON.stringify({ produit, producteur, lot, quantite, pays, signature, date: new Date().toISOString() }, null, 4));
-        zip.file("03_SIGNATURE.txt", signature);
-
-        let csv = "Numero\n";
-        for (let i = 1; i <= Number(quantite); i++) {
-            csv += `${lot}-${String(i).padStart(6, "0")}\n`;
-        }
-        zip.file("04_SERIALISATION.csv", csv);
-
-        let xml = '<?xml version="1.0"?>\n<serialisation>\n';
-        for (let i = 1; i <= Number(quantite); i++) {
-            xml += `   <numero>${lot}-${String(i).padStart(6, "0")}</numero>\n`;
-        }
-        xml += "</serialisation>";
-        zip.file("05_SERIALISATION.xml", xml);
-
-        const wb = new ExcelJS.Workbook();
-        const ws = wb.addWorksheet("Serialisation");
-        ws.columns = [{ header: "Numero", key: "numero", width: 35 }];
-        for (let i = 1; i <= Number(quantite); i++) {
-            ws.addRow({ numero: `${lot}-${String(i).padStart(6, "0")}` });
-        }
-        const xlsxBuffer = await wb.xlsx.writeBuffer();
-        zip.file("06_SERIALISATION.xlsx", xlsxBuffer);
-
         const contenu = await zip.generateAsync({ type: "nodebuffer" });
+        fs.rmSync(tempFolder, { recursive: true, force: true });
+
         res.setHeader("Content-Type", "application/zip");
         res.setHeader("Content-Disposition", `attachment; filename=KIT_ANOR_${lot}.zip`);
         res.send(contenu);
@@ -328,4 +313,4 @@ app.get("/api/registry", async (req, res) => {
     res.json(data);
 });
 
-app.listen(PORT, () => console.log(`ANOR V10 Forge opérationnelle sur port ${PORT}`));
+app.listen(PORT, () => console.log(`ANOR V11 Forge opérationnelle sur le port ${PORT}`));

@@ -2,192 +2,38 @@
  * ==========================================================
  * ia_constructeur.js
  * ANOR V10
- * Construction de la bibliothèque géométrique officielle
+ * Passerelle sécurisée vers la bibliothèque de glyphes
  * ==========================================================
  */
 
 const path = require("path");
 
-const GLYPHES = require(
-    path.join(
-        __dirname,
-        "public",
-        "forge",
-        "bibliotheque_glyphes.js"
-    )
+// Chargement sécurisé de la bibliothèque
+const GLYPHES_SOURCE = require(
+    path.join(__dirname, "public", "forge", "bibliotheque_glyphes.js")
 );
 
-const Compositeur = require(
-    path.join(
-        __dirname,
-        "public",
-        "forge",
-        "compositeur.js"
-    )
-);
+// Immutabilité : empêche toute altération malveillante de la bibliothèque en mémoire
+const GLYPHES_SECURISE = Object.freeze([...GLYPHES_SOURCE]);
 
-const LONGUEURS = Object.freeze({
-    NOYAU:20,
-    TRANSITION:30,
-    PERIPHERIE:40
-});
+/**
+ * Accès sécurisé aux données des glyphes
+ * Retourne une copie en lecture seule
+ */
+const getBibliotheque = () => GLYPHES_SECURISE;
 
-
-function construireSequence(bits, anneau){
-
-    if(!bits)
-        return [];
-
-    const resultat=[];
-
-    for(let i=0;i<bits.length;i+=5){
-
-        const bloc=bits.substring(i,i+5);
-
-        if(bloc.length!==5)
-            continue;
-
-        const index=parseInt(bloc,2)%GLYPHES.length;
-
-        const g=GLYPHES[index];
-
-        resultat.push({
-
-            id:g.id,
-
-            forme:g.forme,
-
-            plein:g.plein,
-
-            valeur:g.valeur,
-
-            anneau:anneau,
-
-            position:i/5,
-
-            bits:bloc
-
-        });
-
+/**
+ * Validation d'un index pour prévenir les accès hors limites (Out-of-bounds)
+ */
+const getGlypheParIndex = (index) => {
+    const i = parseInt(index, 10);
+    if (isNaN(i) || i < 0 || i >= GLYPHES_SECURISE.length) {
+        return GLYPHES_SECURISE[0]; // Retourne un glyphe par défaut sécurisé
     }
+    return GLYPHES_SECURISE[i];
+};
 
-    return resultat;
-
-}
-
-
-function construireBibliotheque(signatureBinaire){
-
-    if(typeof signatureBinaire!=="string")
-        throw new Error("Signature invalide");
-
-    if(signatureBinaire.length<90)
-        throw new Error("Signature binaire incomplète (90 bits requis)");
-
-    const noyauBits=
-        signatureBinaire.substring(
-            0,
-            LONGUEURS.NOYAU
-        );
-
-    const transitionBits=
-        signatureBinaire.substring(
-            LONGUEURS.NOYAU,
-            LONGUEURS.NOYAU+
-            LONGUEURS.TRANSITION
-        );
-
-    const peripherieBits=
-        signatureBinaire.substring(
-            LONGUEURS.NOYAU+
-            LONGUEURS.TRANSITION,
-            90
-        );
-
-    return{
-
-        noyau:
-            construireSequence(
-                noyauBits,
-                2
-            ),
-
-        transition:
-            construireSequence(
-                transitionBits,
-                1
-            ),
-
-        peripherie:
-            construireSequence(
-                peripherieBits,
-                0
-            )
-
-    };
-
-}
-
-
-/**
- * Construit une séquence seule
- */
-function construireSequenceSimple(bits){
-
-    return construireSequence(bits,-1);
-
-}
-
-
-/**
- * Aplatit la bibliothèque.
- * Très utile pour la comparaison IA.
- */
-function bibliothequePlate(biblio){
-
-    return [
-
-        ...biblio.noyau,
-
-        ...biblio.transition,
-
-        ...biblio.peripherie
-
-    ];
-
-}
-
-function construireBibliothequeForge(signature){
-
-    const instructions =
-        Compositeur.composer(signature);
-
-    return instructions.map((g,index)=>({
-
-        index,
-
-        forme:g.glyphe.forme,
-
-        plein:g.glyphe.plein,
-
-        valeur:g.glyphe.valeur,
-
-        angle:g.angle,
-
-        rayon:g.rayon
-
-    }));
-
-}
-
-module.exports={
-
-    construireSequence:construireSequenceSimple,
-
-    construireBibliotheque,
-
-    construireBibliothequeForge,
-
-    bibliothequePlate
-
+module.exports = {
+    getBibliotheque,
+    getGlypheParIndex
 };

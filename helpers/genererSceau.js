@@ -1,51 +1,119 @@
 /**
  * ==========================================================
  * helpers/genererSceau.js
- * Rendu final du Sceau Maître (PNG)
+ * ANOR-SOFT
+ * 
+ * Générateur officiel du sceau
+ * Source unique : SVG
  * ==========================================================
  */
 
 const fs = require("fs");
 const path = require("path");
-const { createCanvas } = require("canvas");
+const sharp = require("sharp");
 
-// Import des moteurs partagés
-const Compositeur = require(path.join(__dirname, "..", "public", "forge", "compositeur.js"));
-const DessinGlyphes = require(path.join(__dirname, "..", "public", "forge", "dessin_glyphes.js"));
+const ForgeRenderer = require(
+    path.join(
+        __dirname,
+        "..",
+        "public",
+        "forge",
+        "forgeRenderer.js"
+    )
+);
 
-/**
- * Génère le sceau physique à partir des instructions calculées
- * @param {string} signature - La chaîne de signature
- * @param {string} identifiant - Le numéro de forge
- * @param {Array} instructions - Les instructions fournies par le Compositeur
- */
-async function genererSceau(signature, identifiant, instructions) {
-    const canvas = createCanvas(500, 500);
-    const ctx = canvas.getContext("2d");
+async function genererSceau(signature, identifiant){
 
-    // Fond blanc
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, 500, 500);
+    const dossier = path.join(
+        __dirname,
+        "..",
+        "generated",
+        identifiant
+    );
 
-    // Dessin basé sur les instructions fournies
-    instructions.forEach(inst => {
-        DessinGlyphes.dessinerCanvas(
-            ctx,
-            inst.glyphe,
-            inst.angle,
-            inst.rayon
+    // Vérification de sécurité avant création
+    if (!fs.existsSync(dossier)) {
+        fs.mkdirSync(
+            dossier,
+            {
+                recursive:true
+            }
         );
-    });
+    }
 
-    // Sauvegarde physique
-    const dossier = path.join(__dirname, "..", "generated", identifiant);
-    fs.mkdirSync(dossier, { recursive: true });
+    const logoPath = path.join(
+        __dirname,
+        "..",
+        "public",
+        "assets",
+        "logo_anor_master.png"
+    );
 
-    const fichier = path.join(dossier, "00_Sceau_Maitre.png");
-    
-    fs.writeFileSync(fichier, canvas.toBuffer("image/png"));
+    let logoBase64 = null;
 
-    return fichier;
+    if(fs.existsSync(logoPath)){
+
+        const buffer =
+            fs.readFileSync(logoPath);
+
+        logoBase64 =
+        "data:image/png;base64,"+
+        buffer.toString("base64");
+
+    }
+
+    /*
+        Génération SVG officielle
+        Même moteur que l'écran forge
+    */
+
+    const svg =
+        await ForgeRenderer.renderSVG(
+            signature,
+            logoBase64
+        );
+
+    const fichierSVG =
+        path.join(
+            dossier,
+            "00_Sceau_Maitre.svg"
+        );
+
+    fs.writeFileSync(
+        fichierSVG,
+        svg,
+        "utf8"
+    );
+
+    const fichierPNG =
+        path.join(
+            dossier,
+            "00_Sceau_Maitre.png"
+        );
+
+    await sharp(
+        Buffer.from(svg)
+    )
+    .resize(
+        {
+            width:4096,
+            height:4096,
+            fit:"contain"
+        }
+    )
+    .png()
+    .toFile(
+        fichierPNG
+    );
+
+    return {
+
+        svg:fichierSVG,
+
+        png:fichierPNG
+
+    };
+
 }
 
 module.exports = genererSceau;
