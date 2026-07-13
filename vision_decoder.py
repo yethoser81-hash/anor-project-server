@@ -26,7 +26,7 @@ RAYON_NOYAU = 130
 NB_EXTERIEUR = 34
 NB_TRANSITION = 28
 NB_NOYAU = 22
-SURFACE_MIN = 25
+SURFACE_MIN = 8
 ANGLE_COMPLET = math.pi * 2
 
 @dataclass
@@ -49,9 +49,44 @@ class VisionDecoder:
         self.glyphes = []
 
     def charger(self, image_path):
-        self.image = cv2.imread(image_path)
-        if self.image is None:
+        img = cv2.imread(image_path)
+        if img is None:
             raise RuntimeError("Image introuvable")
+        
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gray = cv2.medianBlur(gray, 5)
+        
+        circles = cv2.HoughCircles(
+            gray,
+            cv2.HOUGH_GRADIENT,
+            dp=1.2,
+            minDist=gray.shape[0]//2,
+            param1=120,
+            param2=35,
+            minRadius=int(gray.shape[0]*0.12),
+            maxRadius=int(gray.shape[0]*0.48)
+        )
+
+        if circles is None:
+            raise RuntimeError("Aucun sceau circulaire")
+
+        circles = np.round(circles[0]).astype(int)
+        x, y, r = max(circles, key=lambda c: c[2])
+        print(f"Cercle détecté : centre=({x},{y}) rayon={r}")
+
+        m = 25
+        x1 = max(0, x - r - m)
+        y1 = max(0, y - r - m)
+        x2 = min(img.shape[1], x + r + m)
+        y2 = min(img.shape[0], y + r + m)
+        seal = img[y1:y2, x1:x2]
+        print("Seal :", seal.shape)
+
+        self.image = cv2.resize(
+            seal,
+            (1024, 1024),
+            interpolation=cv2.INTER_AREA
+        )
 
     def pretraitement(self):
         self.gray = cv2.cvtColor(self.image, cv2.COLOR_BGR2GRAY)
@@ -85,9 +120,11 @@ class VisionDecoder:
 
     def detecter_primitives(self):
         self.primitives = []
-        contours, _ = cv2.findContours(self.binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(self.binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-            if cv2.contourArea(contour) < SURFACE_MIN: continue
+            aire = cv2.contourArea(contour)
+            if aire < SURFACE_MIN: continue
+            if aire > (self.rayon * self.rayon * 0.02): continue
             p = self.extraire_primitive(contour)
             if p: self.primitives.append(p)
         return self.primitives
@@ -122,15 +159,11 @@ class VisionDecoder:
         if nb == 4:
             rect = cv2.minAreaRect(contour)
             angle = abs(rect[2])
-            if 20 < angle < 70:
-                return "losange"
-                
+            if 20 < angle < 70: return "losange"
             x, y, w, h = cv2.boundingRect(contour)
             ratio = max(w, h) / min(w, h)
-            if ratio > 3.2:
-                return "barre_verticale"
-            if ratio < 1.2:
-                return "carre"
+            if ratio > 3.2: return "barre_verticale"
+            if ratio < 1.2: return "carre"
             return "rectangle"
         if nb >= 9: return "croix"
         return "inconnu"
@@ -165,7 +198,7 @@ class VisionDecoder:
             
             nb = densites[anneau]
             pas_angulaire = 360 / nb
-            position = int(round(angle_deg / pas_angulaire)) % nb
+            position = int((angle_deg + pas_angulaire/2) // pas_angulaire) % nb
             
             self.glyphes.append({
                 "forme": p.forme, 
@@ -185,13 +218,7 @@ class VisionDecoder:
             self.normaliser_primitives()
             self.reconstruire_glyphes()
             
-            self.glyphes = sorted(
-                self.glyphes,
-                key=lambda g: (
-                    g["anneau"],
-                    g["position"]
-                )
-            )
+            self.glyphes = sorted(self.glyphes, key=lambda g: (g["anneau"], g["position"]))
 
             return {
                 "success": True,

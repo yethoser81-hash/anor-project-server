@@ -45,19 +45,24 @@ const ForgeRenderer = {
             throw new Error("Moteur Compositeur introuvable.");
         }
         
-        const instructions = Compositeur.composer(signature);
+        const instructions = Compositeur.composer(
+        signature,
+        {
+        zoneSerie:true
+        }
+        );
         
         let svg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
-    <circle cx="250" cy="250" r="240" fill="none" stroke="#0057B8" stroke-width="8"/>
-    <circle cx="250" cy="250" r="234" fill="none" stroke="#0057B8" stroke-width="1.5"/>
+    <circle cx="250" cy="250" r="238" fill="none" stroke="#0057B8" stroke-width="10"/>
+    <circle cx="250" cy="250" r="228" fill="none" stroke="#0057B8" stroke-width="2"/>
 `;
 
         instructions.forEach(inst => {
             svg += this.creerGlypheSVG(inst.angle, inst.rayon, inst.glyphe);
         });
 
-        svg += `<circle cx="250" cy="250" r="70" fill="none" stroke="#0057B8" stroke-width="2"/>`;
+        svg += `<circle cx="250" cy="250" r="74" fill="none" stroke="#0057B8" stroke-width="3"/>`;
 
         if(logoBase64) {
             svg += `<image href="${logoBase64}" x="170" y="170" width="160" height="160" preserveAspectRatio="xMidYMid meet"/>`;
@@ -70,23 +75,95 @@ const ForgeRenderer = {
     creerGlypheSVG(angle, rayon, glyphe) {
         const x = 250 + Math.cos(angle) * rayon;
         const y = 250 + Math.sin(angle) * rayon;
-        const fill = glyphe.plein ? "#0057B8" : "none";
+
+        const fill = glyphe.plein ? "#0057B8" : "white";
         const stroke = "#0057B8";
-        
-        switch(glyphe.forme) {
+
+        switch (glyphe.forme) {
+
             case "cercle":
-                return `<circle cx="${x}" cy="${y}" r="6" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+                return `
+                <circle
+                    cx="${x}"
+                    cy="${y}"
+                    r="8"
+                    fill="${fill}"
+                    stroke="${stroke}"
+                    stroke-width="3"
+                />
+                `;
+
             case "carre":
-                return `<rect x="${x-6}" y="${y-6}" width="12" height="12" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+                return `
+                <rect
+                    x="${x-8}"
+                    y="${y-8}"
+                    width="16"
+                    height="16"
+                    fill="${fill}"
+                    stroke="${stroke}"
+                    stroke-width="3"
+                />
+                `;
+
             case "rectangle":
-                return `<rect x="${x-14}" y="${y-4}" width="24" height="8" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+                return `
+                <rect
+                    x="${x-16}"
+                    y="${y-6}"
+                    width="32"
+                    height="12"
+                    fill="${fill}"
+                    stroke="${stroke}"
+                    stroke-width="2.5"
+                />
+                `;
+
             case "barre_verticale":
-                return `<rect x="${x-2}" y="${y-8}" width="4" height="16" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>`;
+                return `
+                <rect
+                    x="${x-3}"
+                    y="${y-11}"
+                    width="6"
+                    height="22"
+                    fill="${fill}"
+                    stroke="${stroke}"
+                    stroke-width="2"
+                />
+                `;
+
             case "losange":
-                return `<polygon points="${x},${y-7} ${x+7},${y} ${x},${y+7} ${x-7},${y}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+                return `
+                <polygon
+                    points="
+                        ${x},${y-9}
+                        ${x+9},${y}
+                        ${x},${y+9}
+                        ${x-9},${y}
+                    "
+                    fill="${fill}"
+                    stroke="${stroke}"
+                    stroke-width="3"
+                />
+                `;
+
             case "croix":
-                return `<path d="M ${x-6} ${y} L ${x+6} ${y} M ${x} ${y-6} L ${x} ${y+6}" stroke="${stroke}" stroke-width="3"/>`;
-            default: return "";
+                return `
+                <path
+                    d="
+                        M ${x-8} ${y}
+                        L ${x+8} ${y}
+                        M ${x} ${y-8}
+                        L ${x} ${y+8}
+                    "
+                    stroke="${stroke}"
+                    stroke-width="4"
+                    stroke-linecap="square"
+                />
+                `;
+
+            default:
+                return "";
         }
     },
 

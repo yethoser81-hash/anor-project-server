@@ -30,8 +30,10 @@ const Compositeur = {
 
                 // Espace pour le numéro de série (Zone basse)
                 if (options.zoneSerie && r === 0) {
-                    const angleDeg = (i / nb) * 360;
-                    if (angleDeg > 200 && angleDeg < 340) continue;
+                const angleDeg = (i / nb) * 360;
+                if (angleDeg > 250 && angleDeg < 290) {
+                continue;
+                }
                 }
 
                 // --- VARIABILITÉ DE TAILLE (Nuance dynamique) ---
@@ -45,10 +47,19 @@ const Compositeur = {
                 const index = (seed + i * 9 + r * 17) % G.length;
 
                 instructions.push({
-                    glyphe: G[index],
-                    angle: angle,
-                    rayon: rayon,
-                    echelle: variation // Nouvelle propriété pour le moteur de rendu
+
+                glyphe:G[index],
+
+                angle,
+
+                rayon,
+
+                echelle:variation,
+
+                anneau:r,
+
+                position:i
+
                 });
             }
         });

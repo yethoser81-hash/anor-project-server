@@ -99,89 +99,26 @@ app.post("/api/forge", upload.fields([{ name: "visuel", maxCount: 1 }, { name: "
             return res.status(400).json({ success: false, message: "Paramètres obligatoires manquants." });
         }
 
-        const signature = [
-            nom_produit,
-            nom_producteur,
-            lot,
-            pays_origine,
-            qte
-        ].join("_");
-
+        const signature = [nom_produit, nom_producteur, lot, pays_origine, qte].join("_");
         const nonce = genererNumeroForge();
 
-        /*
-         * Génération EXACTE du sceau
-         * qui servira aussi de référence
-         */
-        const instructions = Compositeur.composer(
-            signature,
-            {
-                zoneSerie: true
-            }
-        );
-
-        /*
-         * Bibliothèque brute
-         */
+        const instructions = Compositeur.composer(signature, { zoneSerie: true });
         const bibliothequeDonnees = getBibliotheque();
 
-        /*
-         * Construction de la référence géométrique
-         */
         const referenceGeometrique = instructions.map((g, index) => {
-
-            const rayons = [210,165,120];
-            const densites = [34,28,22];
-
-            let anneau = rayons.indexOf(g.rayon);
-
-            if(anneau < 0)
-                anneau = 0;
-
-            const position =
-                index % densites[anneau];
-
             return {
-
                 forme: g.glyphe.forme,
-
                 plein: g.glyphe.plein,
-
-                anneau,
-
-                position,
-
-                angle:
-                    Number(
-                        (
-                            g.angle
-                            *180
-                            /Math.PI
-                        ).toFixed(2)
-                    ),
-
+                anneau: g.anneau,
+                position: g.position,
+                angle: Number((g.angle * 180 / Math.PI).toFixed(2)),
                 rayon: g.rayon
-
             };
-
         });
 
-        referenceGeometrique.sort(
-            (a,b)=>{
-                if(a.anneau!==b.anneau){
-                    return a.anneau-b.anneau;
-                }
-                return a.position-b.position;
-            }
-        );
+        referenceGeometrique.sort((a,b) => (a.anneau !== b.anneau) ? a.anneau - b.anneau : a.position - b.position);
 
-        const empreinteGeometrique =
-        crypto
-        .createHash("sha256")
-        .update(
-        JSON.stringify(referenceGeometrique)
-        )
-        .digest("hex");
+        const empreinteGeometrique = crypto.createHash("sha256").update(JSON.stringify(referenceGeometrique)).digest("hex");
 
         let visuelURL = null;
         if (req.files?.visuel) {
@@ -234,6 +171,10 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
         const vision = await exec("python", [path.join(__dirname, "vision_decoder.py"), imagePath]);
         const lecture = JSON.parse(vision.stdout);
 
+        console.log("=========== SIGNATURE LUE ===========");
+        console.log(JSON.stringify(lecture.signature, null, 2));
+        console.log("=====================================");
+
         if (!lecture.success || !lecture.sceau_detecte) {
             return res.json({ success: false, message: lecture.message || "Sceau ANOR non détecté" });
         }
@@ -241,19 +182,24 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
         const { data: produits, error } = await supabase.from("sya_produit_certifie").select("*");
         if (error) throw error;
         
-        let meilleurScore = -1;
+        let meilleurScore = 0;
         let meilleurProduit = null;
 
         for (const p of produits) {
             const reference = typeof p.bibliotheque_formes === 'string' ? JSON.parse(p.bibliotheque_formes) : p.bibliotheque_formes;
+            const refGlyphes = reference.glyphes || reference;
             
-            const score = comparerSignature(lecture.signature, reference.glyphes || reference);
+            console.log("=========== SIGNATURE BDD ===========");
+            console.log(JSON.stringify(refGlyphes, null, 2));
+            console.log("====================================");
+            
+            const score = comparerSignature(lecture.signature, refGlyphes);
             
             console.log("=================================");
             console.log("Produit :", p.nom_produit);
             console.log("Score :", score);
-            console.log("Scan :", lecture.signature.length);
-            console.log("Reference :", reference.length);
+            console.log("Glyphes détectés :", lecture.signature.length);
+            console.log("Glyphes référence :", refGlyphes.length);
             console.log("=================================");
 
             if (score > meilleurScore) {
@@ -263,10 +209,29 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
         }
 
         if (meilleurScore < 95) {
-            return res.json({ success: false, message: "Authenticité non validée", score: meilleurScore });
+            return res.json({ 
+                success: false, 
+                authentique: false,  
+                message: "Authenticité non validée", 
+                score: meilleurScore, 
+                diagnostic: {
+                    glyphesDetectes: lecture.signature.length,
+                    glyphesReference: meilleurProduit ? (Array.isArray(meilleurProduit.bibliotheque_formes) ? meilleurProduit.bibliotheque_formes.length : JSON.parse(meilleurProduit.bibliotheque_formes).length) : 0,
+                    produit: meilleurProduit ? meilleurProduit.nom_produit : null
+                }
+            });
         }
 
-        res.json({ success: true, authentique: true, score: meilleurScore, produit: meilleurProduit, lecture: lecture });
+        res.json({
+            success: true, 
+            authentique: true, 
+            score: meilleurScore, 
+            diagnostic: { 
+                glyphesDetectes: lecture.signature.length, 
+                glyphesReference: Array.isArray(meilleurProduit.bibliotheque_formes) ? meilleurProduit.bibliotheque_formes.length : JSON.parse(meilleurProduit.bibliotheque_formes).length
+            },
+            produit: meilleurProduit
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, message: err.message });
@@ -274,7 +239,7 @@ app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
 });
 
 /* ==========================================================
-   ROUTE API EXPORT KIT (UTILISE LES HELPERS)
+   ROUTE API EXPORT KIT
 ========================================================== */
 
 app.post("/api/export/kit", async (req, res) => {
@@ -287,7 +252,6 @@ app.post("/api/export/kit", async (req, res) => {
 
         const serialisation = genererSerialisation(qte, lot);
         const instructions = Compositeur.composer(signature, { zoneSerie: true });
-        const sceau = await genererSceau(signature, nonce, instructions);
 
         fs.writeFileSync(path.join(tempFolder, "05_Serialisation.csv"), "NumeroSerie\n" + serialisation.join("\n"), "utf8");
         await genererXLSX(serialisation, path.join(tempFolder, "05_Serialisation.xlsx"));
@@ -296,10 +260,7 @@ app.post("/api/export/kit", async (req, res) => {
         await genererJuridiquePDF(path.join(tempFolder, "04_Avertissement_Juridique.pdf"));
         await genererPartenairesPDF(path.join(tempFolder, "06_Partenaires_Impression.pdf"));
 
-        const zip = new JSZip();
-        zip.file("00_Sceau_Maitre.svg", sceau.svg);
-        zip.file("00_Sceau_Maitre.png", sceau.png);
-        
+        const zip = new JSZip();                
         const files = fs.readdirSync(tempFolder);
         files.forEach(file => {
             zip.file(file, fs.readFileSync(path.join(tempFolder, file)));

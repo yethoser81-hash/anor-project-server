@@ -96,8 +96,8 @@ async function genererSceau(signature, identifiant){
     )
     .resize(
         {
-            width:4096,
-            height:4096,
+            width:1200,
+            height:1200,
             fit:"contain"
         }
     )
