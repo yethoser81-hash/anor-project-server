@@ -16,6 +16,7 @@ const Services = require("./services");
 const forgeService = require("./services/forgeService");
 
 const app = express();
+console.log("******** SERVER.JS DEMARRÉ ********");
 const PORT = process.env.PORT || 10000;
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
@@ -92,6 +93,7 @@ app.post("/api/forge", upload.fields([
 
 app.post("/api/produit/verifier", upload.single("sceau"), async (req, res) => {
     try {
+         console.log(">>>>>>>> /api/produit/verifier <<<<<<<<");
         if (!req.file) {
             return res.status(400).json({
                 success: false,
