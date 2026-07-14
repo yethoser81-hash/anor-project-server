@@ -73,7 +73,7 @@ class VisionDecoder:
 
         circles = np.round(circles[0]).astype(int)
         x, y, r = max(circles, key=lambda c: c[2])
-        print(f"Cercle détecté : centre=({x},{y}) rayon={r}")
+        print(f"Cercle détecté : centre=({x},{y}) rayon={r}", file=sys.stderr)
 
         m = 25
         x1 = max(0, x - r - m)
@@ -81,7 +81,7 @@ class VisionDecoder:
         x2 = min(img.shape[1], x + r + m)
         y2 = min(img.shape[0], y + r + m)
         seal = img[y1:y2, x1:x2]
-        print("Seal :", seal.shape)
+        print(f"Seal : {seal.shape}", file=sys.stderr)
 
         self.image = cv2.resize(
             seal,

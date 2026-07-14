@@ -47,7 +47,7 @@ def build(glyphes):
 
     return {
 
-        "hash": sha,
+        "sha256": sha,
 
         "prefix16": sha[:16],
 

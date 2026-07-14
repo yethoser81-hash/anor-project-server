@@ -25,6 +25,11 @@ const DECODER =
 
 async function decoder(imagePath) {
 
+    console.log("===== VISION =====");
+    console.log("typeof =", typeof imagePath);
+    console.log("Buffer =", Buffer.isBuffer(imagePath));
+    console.log(imagePath);
+
     if (!fs.existsSync(imagePath)) {
         throw new Error("Image introuvable : " + imagePath);
     }
@@ -44,6 +49,8 @@ async function decoder(imagePath) {
 
     try {
 
+        console.log("Python =", PYTHON);
+        console.log("Decoder =", DECODER);
         const resultat = await exec(
             PYTHON,
             [
@@ -71,6 +78,9 @@ async function decoder(imagePath) {
 
     try {
 
+        console.log("===== STDOUT =====");
+        console.log(stdout.substring(0,500));
+        console.log("==================");
         lecture = JSON.parse(stdout);
 
     }
