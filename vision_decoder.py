@@ -11,6 +11,7 @@ import json
 import numpy as np
 import sys
 from dataclasses import dataclass
+from vision.geometry_index import build
 
 # ==========================================================
 # CONSTANTES
@@ -218,12 +219,15 @@ class VisionDecoder:
             self.normaliser_primitives()
             self.reconstruire_glyphes()
             
+            index = build(self.glyphes)
+            
             self.glyphes = sorted(self.glyphes, key=lambda g: (g["anneau"], g["position"]))
 
             return {
                 "success": True,
                 "sceau_detecte": True,
-                "signature": self.glyphes
+                "signature": self.glyphes,
+                "index_geometrique": index
             }
         except Exception as e:
             return {"success": False, "message": str(e)}

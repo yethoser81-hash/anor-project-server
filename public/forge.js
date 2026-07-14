@@ -101,7 +101,6 @@ const ForgeController = {
         
         const formData = new FormData(document.getElementById("forgeForm"));
         
-        // Nettoyage : suppression des dates vides du FormData pour qu'elles ne soient pas envoyées
         ['date_certificat_conformite', 'date_fabrication', 'date_peremption'].forEach(field => {
             const el = document.getElementById(field);
             if (el && el.value.trim() === "") {
@@ -122,6 +121,14 @@ const ForgeController = {
             });
             
             const resultat = await reponse.json();
+            
+            if(resultat.reference){
+                console.log(
+                    "Référence géométrique :",
+                    resultat.reference
+                );
+            }
+
             if (!resultat.success) throw new Error(resultat.message || "Erreur lors de l'enregistrement");
 
             document.getElementById("debug").setAttribute("data-nonce", resultat.identifiant);
